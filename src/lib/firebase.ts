@@ -158,10 +158,10 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
   }
 };
 
-// Save User Profile to Firestore & Qnigame Domain API
+// Save User Profile to Firestore
 export const saveUserProfileToFirestore = async (userProfile: UserProfile) => {
   if (!userProfile.id || userProfile.id.startsWith('user-1') || userProfile.id.startsWith('guest')) {
-    // Local / Guest user - don't save or return early
+    // Local / Guest user - don't save to cloud
     return;
   }
   try {
@@ -171,26 +171,38 @@ export const saveUserProfileToFirestore = async (userProfile: UserProfile) => {
       uid: userProfile.id,
       updatedAt: new Date().toISOString()
     }, { merge: true });
-
-    // C'EST ICI QUE VOUS COMMENTEZ LE CODE :
-    // Also sync to domain API endpoint seamlessly
-    /* 
-    fetch('/api/user/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: userProfile.id,
-        username: userProfile.username,
-        points: userProfile.points,
-        coins: userProfile.coins,
-        favoriteGameIds: userProfile.favoriteGameIds
-      })
-    }).catch(e => console.warn('Domain API user sync:', e)); 
-    */
-    
   } catch (error) {
-    console.error('Error saving user profile to cloud storage:', error);
+    console.error('Error saving user profile to Firestore:', error);
   }
+};
+
+// Subscribe to User Profile in Firestore for live real-time synchronization
+export const subscribeToUserProfile = (userId: string, callback: (profile: Partial<UserProfile>) => void) => {
+  if (!userId || userId.startsWith('guest')) return () => {};
+  const userRef = doc(db, 'users', userId);
+  return onSnapshot(userRef, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      callback({
+        id: userId,
+        email: data.email || undefined,
+        username: data.username || 'משתמש רשום',
+        title: data.title || 'תלמיד חכם',
+        level: data.level || 1,
+        points: data.points || 0,
+        coins: data.coins || 0,
+        avatarIcon: data.avatarIcon || '🎓',
+        avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
+        joinedDate: data.joinedDate || new Date().toLocaleDateString('he-IL'),
+        favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
+        badges: Array.isArray(data.badges) ? data.badges : [],
+        gameStats: data.gameStats || {},
+        bio: data.bio || 'שוקד על דברי תורה וערכים בקניגיים.',
+        shabbatModeEnabled: data.shabbatModeEnabled ?? false,
+        soundEnabled: data.soundEnabled ?? true,
+      });
+    }
+  });
 };
 
 // Auth methods

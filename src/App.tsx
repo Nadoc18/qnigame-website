@@ -19,7 +19,7 @@ import { Game, GameCategory, UserProfile } from './types';
 import { soundManager } from './utils/audio';
 import { cloudGamesService } from './services/cloudGamesService';
 import { FirebaseAuthModal } from './components/FirebaseAuthModal';
-import { auth, syncUserProfile, saveUserProfileToFirestore } from './lib/firebase';
+import { auth, syncUserProfile, saveUserProfileToFirestore, subscribeToUserProfile } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 import { Leaderboard } from './components/Leaderboard';
@@ -104,7 +104,9 @@ export default function App() {
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+    let unsubSnapshot: (() => void) | undefined;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         try {
           const syncedProfile = await syncUserProfile(fbUser, INITIAL_USER);
@@ -112,10 +114,20 @@ export default function App() {
             ...syncedProfile,
             isFirebaseUser: true,
           });
+
+          // Subscribe to live profile changes in Firestore
+          unsubSnapshot = subscribeToUserProfile(fbUser.uid, (updatedData) => {
+            setUser((prev) => ({
+              ...prev,
+              ...updatedData,
+              isFirebaseUser: true,
+            }));
+          });
         } catch (error) {
           console.error('Error syncing profile:', error);
         }
       } else {
+        if (unsubSnapshot) unsubSnapshot();
         // User logged out - fallback to local user
         setUser((prev) => {
           if (prev.isFirebaseUser) {
@@ -129,7 +141,10 @@ export default function App() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubSnapshot) unsubSnapshot();
+    };
   }, []);
 
   // Persist user in localStorage and sync with Firestore if logged in
@@ -151,11 +166,25 @@ export default function App() {
         ? prev.favoriteGameIds.filter((id) => id !== gameId)
         : [...prev.favoriteGameIds, gameId];
 
-      return {
+      const nextUser = {
         ...prev,
         favoriteGameIds: nextFavs,
       };
+
+      if (prev.isFirebaseUser) {
+        saveUserProfileToFirestore(nextUser);
+      }
+
+      return nextUser;
     });
+  };
+
+  const getTitleForLevel = (lvl: number): string => {
+    if (lvl >= 10) return 'שר התורה';
+    if (lvl >= 7) return 'עילוי בתורה';
+    if (lvl >= 5) return 'תלמיד חכם';
+    if (lvl >= 3) return 'לומד שוקד';
+    return 'בחור כהלכה';
   };
 
   const handleRecordScore = (gameId: string, score: number) => {
@@ -169,11 +198,18 @@ export default function App() {
       };
 
       const newHighScore = Math.max(currentStat.highScore, score);
-      const newPoints = prev.points + Math.floor(score / 10);
+      const earnedPoints = Math.max(10, Math.floor(score / 5));
+      const newPoints = prev.points + earnedPoints;
+      const newCoins = prev.coins + Math.max(5, Math.floor(score / 10));
+      const newLevel = Math.max(prev.level, Math.floor(newPoints / 300) + 1);
+      const newTitle = getTitleForLevel(newLevel);
 
-      return {
+      const nextUser = {
         ...prev,
         points: newPoints,
+        coins: newCoins,
+        level: newLevel,
+        title: newTitle,
         gameStats: {
           ...prev.gameStats,
           [gameId]: {
@@ -184,6 +220,12 @@ export default function App() {
           },
         },
       };
+
+      if (prev.isFirebaseUser) {
+        saveUserProfileToFirestore(nextUser);
+      }
+
+      return nextUser;
     });
   };
 
