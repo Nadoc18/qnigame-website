@@ -1,0 +1,102 @@
+import React from 'react';
+import { Flame, Heart, Shield, Star, Award, Sparkles, BookOpen } from 'lucide-react';
+import { QnigameLogo } from './QnigameLogo';
+
+export const Footer: React.FC = () => {
+  return (
+    <footer className="relative bg-gradient-to-b from-[#11230e] via-[#0c1a0a] to-[#060e05] border-t border-emerald-500/20 text-emerald-100 pt-12 pb-8 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      {/* Top Gaming LED Line */}
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-emerald-500 via-[#f5c242] to-emerald-500 shadow-[0_0_12px_rgba(42,177,101,0.6)]" />
+
+      {/* Subtle Ambient Gaming Grid Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(#2ab165_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.05] pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-10 relative z-10">
+        
+        {/* About */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <QnigameLogo className="h-14" />
+          </div>
+          <p className="text-xs sm:text-sm leading-relaxed text-emerald-100/80 font-medium">
+            הבית המוביל למשחקים תורניים, יהודיים וערכיים לכל המשפחה. לימוד תורה, תנ״ך, הלכה ומורשת דרך חוויה משחקית אינטראקטיבית.
+          </p>
+          <div className="inline-flex items-center gap-2 text-xs text-[#f5c242] bg-black/40 border border-amber-500/30 p-3 rounded-2xl font-black shadow-inner backdrop-blur-md">
+            <Sparkles className="w-4 h-4 text-[#f5c242] shrink-0 animate-pulse" />
+            <span>📖 "דעת תורה ויראת שמיים בחוויה חיה ומהנה"</span>
+          </div>
+        </div>
+
+        {/* Categories */}
+        <div>
+          <h3 className="text-[#f5c242] font-black mb-4 text-xs uppercase tracking-wider flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-emerald-400" />
+            <span>קטגוריות משחקים</span>
+          </h3>
+          <ul className="space-y-2.5 text-xs sm:text-sm font-bold">
+            <li><a href="#trivia" className="text-emerald-100/90 hover:text-[#f5c242] transition-colors flex items-center gap-1.5"><span className="text-emerald-500">◀</span> טריוויה ודעת תורה</a></li>
+            <li><a href="#tanach" className="text-emerald-100/90 hover:text-[#f5c242] transition-colors flex items-center gap-1.5"><span className="text-emerald-500">◀</span> תנ״ך ומורשת ישראל</a></li>
+            <li><a href="#shabbat" className="text-emerald-100/90 hover:text-[#f5c242] transition-colors flex items-center gap-1.5"><span className="text-emerald-500">◀</span> שבת, חגים ומועדים</a></li>
+            <li><a href="#brachot" className="text-emerald-100/90 hover:text-[#f5c242] transition-colors flex items-center gap-1.5"><span className="text-emerald-500">◀</span> ברכות וכשרות ההלכה</a></li>
+            <li><a href="#puzzle" className="text-emerald-100/90 hover:text-[#f5c242] transition-colors flex items-center gap-1.5"><span className="text-emerald-500">◀</span> חשיבה, פאזלים ואסטרטגיה</a></li>
+          </ul>
+        </div>
+
+        {/* Shabbat Times Box */}
+        <div className="bg-black/40 border border-emerald-500/25 p-4 rounded-2xl shadow-xl backdrop-blur-md relative overflow-hidden group hover:border-amber-400/40 transition-all">
+          <div className="absolute -top-10 -right-10 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
+          <div className="flex items-center gap-2 text-[#f5c242] font-black mb-3 text-sm">
+            <Flame className="w-4 h-4 text-amber-400 animate-pulse drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+            <span>זמני שבת קודש (משוער)</span>
+          </div>
+          <div className="space-y-2 text-xs font-semibold">
+            <div className="flex justify-between pb-1.5 border-b border-emerald-500/20">
+              <span className="text-emerald-300">פרשת השבוע:</span>
+              <span className="text-white font-black">פרשת פנחס</span>
+            </div>
+            <div className="flex justify-between pb-1.5 border-b border-emerald-500/20">
+              <span className="text-emerald-300">כניסת שבת:</span>
+              <span className="text-[#f5c242] font-mono font-black text-sm">19:18</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-emerald-300">יציאת שבת:</span>
+              <span className="text-[#f5c242] font-mono font-black text-sm">20:22</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-emerald-400/80 mt-3 text-center font-bold">
+            * זמנים משוערים לאזור המרכז. יש להתעדכן בלוחות השנה.
+          </p>
+        </div>
+
+        {/* Values & Safety */}
+        <div className="space-y-3">
+          <h3 className="text-[#f5c242] font-black text-xs uppercase tracking-wider">איכות ובטיחות</h3>
+          <div className="flex items-start gap-2.5 text-xs text-emerald-100/90 font-bold bg-black/20 p-2.5 rounded-xl border border-emerald-500/15">
+            <Shield className="w-4 h-4 text-[#2fab65] shrink-0 mt-0.5" />
+            <span>תוכן מבוקר ומפוקח ללא פרסומות לא הולמות.</span>
+          </div>
+          <div className="flex items-start gap-2.5 text-xs text-emerald-100/90 font-bold bg-black/20 p-2.5 rounded-xl border border-emerald-500/15">
+            <Award className="w-4 h-4 text-[#f5c242] shrink-0 mt-0.5" />
+            <span>פותח בשיתוף מחנכים ואנשי תורה וטכנולוגיה.</span>
+          </div>
+          <div className="flex items-start gap-2.5 text-xs text-emerald-100/90 font-bold bg-black/20 p-2.5 rounded-xl border border-emerald-500/15">
+            <Star className="w-4 h-4 text-[#f5c242] shrink-0 mt-0.5" />
+            <span>חווית משחק מלאה בדפדפן - ללא הורדות!</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div className="max-w-7xl mx-auto pt-6 border-t border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between text-xs text-emerald-300/80 gap-4 font-bold relative z-10">
+        <div>
+          © {new Date().getFullYear()} קניגיים Qnigame .כל הזכויות שמורות.
+        </div>
+        <div className="flex items-center gap-1 text-emerald-200">
+          <span>נבנה באהבה ללומדי התורה וילדי ישראל</span>
+          <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline mx-1 animate-pulse" />
+        </div>
+      </div>
+    </footer>
+  );
+};
+

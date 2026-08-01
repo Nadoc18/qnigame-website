@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profiles",
+      "description": "User account profile, level, points, favorites and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User Auth UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "username": { "type": "string", "description": "Display name" },
+        "title": { "type": "string", "description": "Title e.g. תלמיד חכם" },
+        "level": { "type": "number", "description": "User level" },
+        "points": { "type": "number", "description": "Total points earned" },
+        "coins": { "type": "number", "description": "Total coins earned" },
+        "avatarIcon": { "type": "string", "description": "Emoji or icon for avatar" },
+        "avatarBg": { "type": "string", "description": "Background gradient string" },
+        "joinedDate": { "type": "string", "description": "Registration date" },
+        "favoriteGameIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array of favorite game IDs"
+        },
+        "bio": { "type": "string", "description": "User bio" },
+        "shabbatModeEnabled": { "type": "boolean", "description": "Shabbat mode setting" },
+        "soundEnabled": { "type": "boolean", "description": "Sound setting" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+      },
+      "required": ["uid", "username"]
+    },
+    "user_game_stats": {
+      "title": "User Game Statistics",
+      "description": "User high scores and plays count per game",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "gameId": { "type": "string", "description": "Game ID" },
+        "gameTitle": { "type": "string", "description": "Game title" },
+        "highScore": { "type": "number", "description": "Highest score achieved" },
+        "playsCount": { "type": "number", "description": "Number of times played" },
+        "lastPlayed": { "type": "string", "description": "Last played date string or ISO timestamp" }
+      },
+      "required": ["userId", "gameId"]
+    },
+    "games": {
+      "title": "Games Collection",
+      "description": "JSON collection of catalog games stored in Firestore",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Game ID" },
+        "title": { "type": "string", "description": "Game title" },
+        "subtitle": { "type": "string", "description": "Short subtitle" },
+        "description": { "type": "string", "description": "Game description" },
+        "longDescription": { "type": "string", "description": "Detailed description" },
+        "category": { "type": "string", "description": "Game category" },
+        "difficulty": { "type": "string", "description": "Difficulty level" },
+        "ageRating": { "type": "string", "description": "Age rating" },
+        "playCount": { "type": "number", "description": "Total play count" },
+        "rating": { "type": "number", "description": "Rating out of 5" },
+        "ratingCount": { "type": "number", "description": "Number of ratings" },
+        "author": { "type": "string", "description": "Author name" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags" },
+        "thumbnailBg": { "type": "string", "description": "Thumbnail background CSS gradient" },
+        "iconName": { "type": "string", "description": "Lucide icon name" },
+        "instructions": { "type": "array", "items": { "type": "string" }, "description": "Instructions list" },
+        "torahSource": { "type": "string", "description": "Torah / Tanach quote source" },
+        "gameType": { "type": "string", "description": "Type key" },
+        "externalUrl": { "type": "string", "description": "Optional iframe URL" },
+        "playUrl": { "type": "string", "description": "Optional direct play URL" },
+        "isPopular": { "type": "boolean", "description": "Is popular badge" },
+        "isNew": { "type": "boolean", "description": "Is new badge" }
+      },
+      "required": ["id", "title", "category"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/users" },
+      "description": "User profiles"
+    },
+    "/user_game_stats/{statId}": {
+      "schema": { "$ref": "#/entities/user_game_stats" },
+      "description": "User game stats"
+    },
+    "/games/{gameId}": {
+      "schema": { "$ref": "#/entities/games" },
+      "description": "Catalog of games stored in Firestore"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "קניגיים",
+  "description": "קניגיים - פורטל משחקים דתיים יהודיים, ספריית משחקים, חשבון משתמש, חדשות ומסגרת משחק אינטראקטיבית.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
