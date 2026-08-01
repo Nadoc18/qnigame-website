@@ -357,8 +357,8 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                 )}
               </button>
 
-              {/* Quick Test Mode Login Button for Local Testing */}
-              {onQuickTestLogin && (
+              {/* Quick Test Mode Login Button (STRICTLY DEV / LOCALHOST ONLY - HIDDEN IN PRODUCTION) */}
+              {((import.meta as any).env?.DEV || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))) && onQuickTestLogin && (
                 <div className="pt-2 border-t border-slate-100 text-center">
                   <button
                     type="button"
@@ -369,7 +369,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                     className="w-full py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-400/50 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                    <span>⚡ כניסת ניסיון מהירה (ללא סיסמה)</span>
+                    <span>⚡ כניסת ניסיון מהירה (למבחן ב-Localhost בלבד)</span>
                   </button>
                 </div>
               )}
