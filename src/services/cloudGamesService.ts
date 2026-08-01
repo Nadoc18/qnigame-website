@@ -14,49 +14,6 @@ export interface CloudStatus {
 const CACHE_KEY = 'qnigame_cloud_games_cache';
 const CACHE_STATUS_KEY = 'qnigame_cloud_status';
 
-const sanitizeGame = (game: Game): Game => {
-  if (game.id === 'memory-jewish-game') {
-    return {
-      ...game,
-      gameType: 'native_memory',
-      externalUrl: undefined,
-      playUrl: undefined,
-    };
-  }
-  if (game.id === 'tanach-wordle-game') {
-    return {
-      ...game,
-      gameType: 'native_wordle',
-      externalUrl: undefined,
-      playUrl: undefined,
-    };
-  }
-  // Remove erroneous TimeCount externalUrl from all games except 'time-count'
-  if (game.id !== 'time-count' && game.externalUrl?.includes('nadoc-games.com/TimeCount')) {
-    return {
-      ...game,
-      externalUrl: undefined,
-    };
-  }
-  return game;
-};
-
-const ensureNativeGamesPresent = (games: Game[]): Game[] => {
-  const sanitized = games.map(sanitizeGame);
-  const nativeIds = ['tanach-wordle-game', 'memory-jewish-game'];
-  for (const nativeId of nativeIds) {
-    if (!sanitized.some((g) => g.id === nativeId)) {
-      const nativeGame = GAMES_LIST.find((g) => g.id === nativeId);
-      if (nativeGame) {
-        sanitized.unshift(nativeGame);
-        // Persist game automatically to Firebase Firestore!
-        syncGameToFirestore(nativeGame);
-      }
-    }
-  }
-  return sanitized;
-};
-
 export class CloudGamesService {
   private static instance: CloudGamesService;
 
@@ -70,7 +27,7 @@ export class CloudGamesService {
   }
 
   public async fetchGamesFromCloud(): Promise<{ games: Game[]; status: CloudStatus }> {
-    // Unconditionally purge old games cache on fetch to ensure fresh games list
+    // Purge old cache to ensure fresh list
     try {
       localStorage.removeItem(CACHE_KEY);
       localStorage.removeItem(CACHE_STATUS_KEY);
@@ -80,17 +37,16 @@ export class CloudGamesService {
     try {
       const gamesList = await getGamesFromFirestore();
       if (gamesList && Array.isArray(gamesList) && gamesList.length > 0) {
-        const sanitized = ensureNativeGamesPresent(gamesList);
-        localStorage.setItem(CACHE_KEY, JSON.stringify(sanitized));
+        localStorage.setItem(CACHE_KEY, JSON.stringify(gamesList));
         const status: CloudStatus = {
           connected: true,
           loading: false,
           lastUpdated: new Date().toISOString(),
-          totalGames: sanitized.length,
-          source: 'v2_clean_Firestore', 
+          totalGames: gamesList.length,
+          source: 'Firestore Database', 
         };
         localStorage.setItem(CACHE_STATUS_KEY, JSON.stringify(status));
-        return { games: sanitized, status };
+        return { games: gamesList, status };
       }
     } catch (err: any) {
       console.warn('Firestore games fetch warning:', err);
@@ -106,17 +62,16 @@ export class CloudGamesService {
         const data = await jsonRes.json();
         const gamesArray: Game[] = Array.isArray(data) ? data : (data.games || []);
         if (Array.isArray(gamesArray) && gamesArray.length > 0) {
-          const sanitized = ensureNativeGamesPresent(gamesArray);
-          localStorage.setItem(CACHE_KEY, JSON.stringify(sanitized));
+          localStorage.setItem(CACHE_KEY, JSON.stringify(gamesArray));
           const status: CloudStatus = {
             connected: true,
             loading: false,
             lastUpdated: new Date().toISOString(),
-            totalGames: sanitized.length,
-            source: 'v2_clean_JSON', 
+            totalGames: gamesArray.length,
+            source: 'Qnigame JSON Database', 
           };
           localStorage.setItem(CACHE_STATUS_KEY, JSON.stringify(status));
-          return { games: sanitized, status };
+          return { games: gamesArray, status };
         }
       }
     } catch (err: any) {
@@ -124,55 +79,49 @@ export class CloudGamesService {
     }
 
     // 3. Fallback to GAMES_LIST
-    const sanitized = ensureNativeGamesPresent(GAMES_LIST);
     const status: CloudStatus = {
       connected: true,
       loading: false,
       lastUpdated: new Date().toISOString(),
-      totalGames: sanitized.length,
-      source: 'v2_clean_GAMES_LIST',
+      totalGames: GAMES_LIST.length,
+      source: 'GAMES_LIST',
     };
 
-    return { games: sanitized, status };
+    return { games: GAMES_LIST, status };
   }
 
   // Add a new game to the Cloud
   public async addGameToCloud(newGame: Partial<Game>): Promise<{ success: boolean; game?: Game; error?: string }> {
     try {
-      const res = await fetch('/api/games', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newGame)
-      });
+      const gameToAdd: Game = {
+        id: newGame.id || `game_${Date.now()}`,
+        title: newGame.title || 'משחק חדש',
+        subtitle: newGame.subtitle || '',
+        description: newGame.description || '',
+        longDescription: newGame.longDescription || '',
+        category: newGame.category || 'טריוויה ודעת',
+        difficulty: newGame.difficulty || 'לכל המשפחה',
+        ageRating: newGame.ageRating || 'גילאי 6+',
+        playCount: newGame.playCount || 0,
+        rating: newGame.rating || 5.0,
+        ratingCount: newGame.ratingCount || 1,
+        author: newGame.author || 'יוצר קניגיים',
+        tags: newGame.tags || ['משחק חדש'],
+        thumbnailBg: newGame.thumbnailBg || 'from-indigo-600 to-purple-800',
+        iconName: newGame.iconName || 'Gamepad2',
+        instructions: newGame.instructions || ['שחק ותהנה!'],
+        torahSource: newGame.torahSource,
+        gameType: newGame.gameType || 'trivia',
+        isPopular: false,
+        isNew: true,
+        externalUrl: newGame.externalUrl,
+        files: newGame.files || [],
+      };
 
-      const data = await res.json();
-      if (data.success && data.game) {
-        return { success: true, game: data.game };
-      } else {
-        return { success: false, error: data.error || 'שגיאה בהוספת המשחק' };
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message || 'שגיאת תקשורת עם השרת' };
-    }
-  }
-
-  // Sync from custom cloud JSON URL
-  public async syncWithCloudUrl(cloudUrl: string): Promise<{ success: boolean; totalGames?: number; error?: string }> {
-    try {
-      const res = await fetch('/api/games/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cloudUrl })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        return { success: true, totalGames: data.totalGames };
-      } else {
-        return { success: false, error: data.error || 'סנכרון הענן נכשל' };
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message || 'שגיאת תקשורת במענה הענן' };
+      await syncGameToFirestore(gameToAdd);
+      return { success: true, game: gameToAdd };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'שגיאה בהוספת המשחק' };
     }
   }
 }

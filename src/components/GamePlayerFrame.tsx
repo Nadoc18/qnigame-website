@@ -23,8 +23,6 @@ import {
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import confetti from 'canvas-confetti';
-import { MemoryGame } from './games/MemoryGame';
-import { TanachWordle } from './games/TanachWordle';
 
 interface GamePlayerFrameProps {
   game: Game;
@@ -307,25 +305,15 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                 </div>
               )}
 
-              {/* 3. The Actual Preloaded Game Iframe or Native Component */}
-              {game.id === 'memory-jewish-game' || game.gameType === 'native_memory' ? (
-                <div className="w-full h-full bg-[#1c3817] p-4 overflow-y-auto">
-                  <MemoryGame onRecordScore={(score) => onRecordScore(game.id, score)} />
-                </div>
-              ) : game.id === 'tanach-wordle-game' || game.gameType === 'native_wordle' ? (
-                <div className="w-full h-full bg-[#1c3817] p-4 overflow-y-auto">
-                  <TanachWordle onRecordScore={(score) => onRecordScore(game.id, score)} />
-                </div>
-              ) : (
-                <iframe
-                  key={key}
-                  title={game.title}
-                  src={(game.externalUrl || game.playUrl) ? (game.externalUrl || game.playUrl) : undefined}
-                  srcDoc={(!game.externalUrl && !game.playUrl && combinedHtml.trim()) ? combinedHtml : undefined}
-                  className="w-full h-full border-none"
-                  sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
-                />
-              )}
+              {/* 3. The Actual Preloaded Game Iframe */}
+              <iframe
+                key={key}
+                title={game.title}
+                src={(game.externalUrl || game.playUrl) ? (game.externalUrl || game.playUrl) : undefined}
+                srcDoc={(!game.externalUrl && !game.playUrl && combinedHtml.trim()) ? combinedHtml : undefined}
+                className="w-full h-full border-none"
+                sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
+              />
 
             </div>
           </div>
