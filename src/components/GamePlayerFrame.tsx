@@ -246,37 +246,43 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
         >
           
           {/* Frame Control Bar */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#2f4d21] border-b border-[#3e632c] shrink-0 text-white z-40">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="w-3 h-3 rounded-full bg-[#c99719] inline-block animate-pulse"></span>
-              <span className="font-extrabold text-white">מסגרת אינטראקטיבית (HTML5 Game Frame)</span>
-            </div>
+          <div className={`flex items-center ${isFullscreen ? 'justify-end p-3 bg-black/90 backdrop-blur-md border-none' : 'justify-between px-4 py-3 bg-[#2f4d21] border-b border-[#3e632c]'} shrink-0 text-white z-40`}>
+            {!isFullscreen && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="w-3 h-3 rounded-full bg-[#c99719] inline-block animate-pulse"></span>
+                <span className="font-extrabold text-white">מסגרת אינטראקטיבית (HTML5 Game Frame)</span>
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={handleRestart}
-                title="אפס משחק"
-                className="p-2 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-indigo-100 border border-indigo-600 transition-all text-xs flex items-center gap-1.5 font-bold"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-yellow-300" />
-                <span className="hidden sm:inline">מסך פתיחה / התחל מחדש</span>
-              </button>
+              {!isFullscreen && (
+                <>
+                  <button
+                    onClick={handleRestart}
+                    title="אפס משחק"
+                    className="p-2 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-indigo-100 border border-indigo-600 transition-all text-xs flex items-center gap-1.5 font-bold"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-yellow-300" />
+                    <span className="hidden sm:inline">מסך פתיחה / התחל מחדש</span>
+                  </button>
 
-              <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                title="צלילי משחק"
-                className="p-2 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-indigo-100 border border-indigo-600 transition-all"
-              >
-                {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-yellow-300" /> : <VolumeX className="w-3.5 h-3.5 text-indigo-300" />}
-              </button>
+                  <button
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    title="צלילי משחק"
+                    className="p-2 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-indigo-100 border border-indigo-600 transition-all"
+                  >
+                    {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-yellow-300" /> : <VolumeX className="w-3.5 h-3.5 text-indigo-300" />}
+                  </button>
+                </>
+              )}
 
               <button
                 onClick={handleFullscreenToggle}
                 title={isFullscreen ? 'צא ממסך מלא' : 'מסך מלא'}
-                className="p-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-indigo-950 transition-all flex items-center gap-1.5 text-xs font-black shadow-sm cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-indigo-950 transition-all flex items-center gap-2 text-xs font-black shadow-md cursor-pointer"
               >
-                {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                <span className="hidden sm:inline">{isFullscreen ? 'מזער מסך' : 'מסך מלא'}</span>
+                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                <span>{isFullscreen ? 'מזער מסך' : 'מסך מלא'}</span>
               </button>
             </div>
           </div>
