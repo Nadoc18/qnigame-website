@@ -14,6 +14,33 @@ export interface CloudStatus {
 const CACHE_KEY = 'qnigame_cloud_games_cache';
 const CACHE_STATUS_KEY = 'qnigame_cloud_status';
 
+const sanitizeGame = (game: Game): Game => {
+  if (game.id === 'memory-jewish-game') {
+    return {
+      ...game,
+      gameType: 'native_memory',
+      externalUrl: undefined,
+      playUrl: undefined,
+    };
+  }
+  if (game.id === 'tanach-wordle-game') {
+    return {
+      ...game,
+      gameType: 'native_wordle',
+      externalUrl: undefined,
+      playUrl: undefined,
+    };
+  }
+  // Remove erroneous TimeCount externalUrl from all games except 'time-count'
+  if (game.id !== 'time-count' && game.externalUrl?.includes('nadoc-games.com/TimeCount')) {
+    return {
+      ...game,
+      externalUrl: undefined,
+    };
+  }
+  return game;
+};
+
 export class CloudGamesService {
   private static instance: CloudGamesService;
 
@@ -26,88 +53,74 @@ export class CloudGamesService {
     return CloudGamesService.instance;
   }
 
+  public async fetchGamesFromCloud(): Promise<{ games: Game[]; status: CloudStatus }> {
+    // Clear legacy localStorage cache on fetch
+    try {
+      const cachedStatus = localStorage.getItem(CACHE_STATUS_KEY);
+      if (cachedStatus && !cachedStatus.includes('v2_clean')) {
+        localStorage.removeItem(CACHE_KEY);
+      }
+    } catch (e) {}
 
-
-public async fetchGamesFromCloud(): Promise<{ games: Game[]; status: CloudStatus }> {
-  // 1. Try Firestore DB
-  try {
-    const gamesList = await getGamesFromFirestore();
-    if (gamesList && Array.isArray(gamesList) && gamesList.length > 0) {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(gamesList));
-      const status: CloudStatus = {
-        connected: true,
-        loading: false,
-        lastUpdated: new Date().toISOString(),
-        totalGames: gamesList.length,
-        source: 'Firestore Database', 
-      };
-      localStorage.setItem(CACHE_STATUS_KEY, JSON.stringify(status));
-      return { games: gamesList, status };
-    }
-  } catch (err: any) {
-    console.warn('Firestore games fetch warning:', err);
-  }
-
-  // 2. Try JSON database endpoint (/games.json or /api/games) for deployed static/server host
-  try {
-    let jsonRes = await fetch('/games.json');
-    if (!jsonRes.ok) {
-      jsonRes = await fetch('/api/games');
-    }
-    if (jsonRes.ok) {
-      const data = await jsonRes.json();
-      let gamesArray: Game[] = Array.isArray(data) ? data : (data.games || []);
-      if (Array.isArray(gamesArray) && gamesArray.length > 0) {
-        gamesArray = gamesArray.map((g) => {
-          if (g.id === 'memory-jewish-game') return { ...g, gameType: 'native_memory', externalUrl: undefined };
-          if (g.id === 'tanach-wordle-game') return { ...g, gameType: 'native_wordle', externalUrl: undefined };
-          return g;
-        });
-        localStorage.setItem(CACHE_KEY, JSON.stringify(gamesArray));
+    // 1. Try Firestore DB
+    try {
+      const gamesList = await getGamesFromFirestore();
+      if (gamesList && Array.isArray(gamesList) && gamesList.length > 0) {
+        const sanitized = gamesList.map(sanitizeGame);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(sanitized));
         const status: CloudStatus = {
           connected: true,
           loading: false,
           lastUpdated: new Date().toISOString(),
-          totalGames: gamesArray.length,
-          source: 'Qnigame JSON Database', 
+          totalGames: sanitized.length,
+          source: 'v2_clean_Firestore', 
         };
         localStorage.setItem(CACHE_STATUS_KEY, JSON.stringify(status));
-        return { games: gamesArray, status };
+        return { games: sanitized, status };
       }
+    } catch (err: any) {
+      console.warn('Firestore games fetch warning:', err);
     }
-  } catch (err: any) {
-    console.warn('JSON database fetch warning:', err);
-  }
 
-  // 3. Fallback to localStorage cache or GAMES_LIST
-  const cached = localStorage.getItem(CACHE_KEY);
-  let fallbackGames = GAMES_LIST;
-
-  if (cached) {
+    // 2. Try JSON database endpoint (/games.json or /api/games)
     try {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        fallbackGames = parsed.map((g: Game) => {
-          if (g.id === 'memory-jewish-game') return { ...g, gameType: 'native_memory', externalUrl: undefined };
-          if (g.id === 'tanach-wordle-game') return { ...g, gameType: 'native_wordle', externalUrl: undefined };
-          return g;
-        });
+      let jsonRes = await fetch('/games.json');
+      if (!jsonRes.ok) {
+        jsonRes = await fetch('/api/games');
       }
-    } catch (e) {
-      console.error('Error parsing cached games', e);
+      if (jsonRes.ok) {
+        const data = await jsonRes.json();
+        const gamesArray: Game[] = Array.isArray(data) ? data : (data.games || []);
+        if (Array.isArray(gamesArray) && gamesArray.length > 0) {
+          const sanitized = gamesArray.map(sanitizeGame);
+          localStorage.setItem(CACHE_KEY, JSON.stringify(sanitized));
+          const status: CloudStatus = {
+            connected: true,
+            loading: false,
+            lastUpdated: new Date().toISOString(),
+            totalGames: sanitized.length,
+            source: 'v2_clean_JSON', 
+          };
+          localStorage.setItem(CACHE_STATUS_KEY, JSON.stringify(status));
+          return { games: sanitized, status };
+        }
+      }
+    } catch (err: any) {
+      console.warn('JSON database fetch warning:', err);
     }
+
+    // 3. Fallback to GAMES_LIST
+    const sanitized = GAMES_LIST.map(sanitizeGame);
+    const status: CloudStatus = {
+      connected: true,
+      loading: false,
+      lastUpdated: new Date().toISOString(),
+      totalGames: sanitized.length,
+      source: 'v2_clean_GAMES_LIST',
+    };
+
+    return { games: sanitized, status };
   }
-
-  const status: CloudStatus = {
-    connected: true,
-    loading: false,
-    lastUpdated: new Date().toISOString(),
-    totalGames: fallbackGames.length,
-    source: 'ספריה מקומית (מטמון)',
-  };
-
-  return { games: fallbackGames, status };
-}
 
   // Add a new game to the Cloud
   public async addGameToCloud(newGame: Partial<Game>): Promise<{ success: boolean; game?: Game; error?: string }> {
