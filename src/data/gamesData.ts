@@ -57,6 +57,9 @@ export const GAMES_LIST: Game[] = [
     gameType: 'native_wordle',
     isPopular: true,
     isNew: true,
+    aspectRatio: '16/9',
+    frameWidth: '100%',
+    frameHeight: '550px',
     introVideoUrl: 'https://firebasestorage.googleapis.com/v0/b/molten-protocol-whnbb.firebasestorage.app/o/intro_squareHEBREW.mp4?alt=media&token=a80d8520-1de6-46a4-a8b9-df2103855845',
     files: []
   },
