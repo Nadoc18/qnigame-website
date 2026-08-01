@@ -1,6 +1,6 @@
 import { Game } from '../types';
 import { GAMES_LIST } from '../data/gamesData';
-import { getGamesFromFirestore } from '../lib/firebase';
+import { getGamesFromFirestore, syncGameToFirestore } from '../lib/firebase';
 
 export interface CloudStatus {
   connected: boolean;
@@ -49,6 +49,8 @@ const ensureNativeGamesPresent = (games: Game[]): Game[] => {
       const nativeGame = GAMES_LIST.find((g) => g.id === nativeId);
       if (nativeGame) {
         sanitized.unshift(nativeGame);
+        // Persist game automatically to Firebase Firestore!
+        syncGameToFirestore(nativeGame);
       }
     }
   }
