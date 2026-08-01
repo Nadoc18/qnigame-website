@@ -63,40 +63,6 @@
     "title": "טריוויה יהודית - אלופי התנ\"ך וההלכה",
     "subtitle": "חידון דעת אינטראקטיבי עם מאות שאלות בדרגות קושי משתנות",
     "description": "בחן את ידיעותיך בתורה, תנ\"ך, מנהגים, חגים והלכות יומיות. צבור נקודות ועלה בדרגות!",
-    "longDescription": "משחק טריוויה יהודי עשיר המשלב שאלות מגוונות מכל עולמות התוכן היהודיים: פרשת השבוע, חגי ישראל, הלכות ברכות, דמויות בתנ\"ך ומנהגי ישראל. המשחק כולל שעון זמן, רצף תשובות נכונות (Streak), רמזים והסברים מפורטים מתוך מקורות חז\"ל בסיום כל שאלה.",
-    "category": "טריוויה ודעת",
-    "difficulty": "לכל המשפחה",
-    "ageRating": "גילאי 6+",
-    "playCount": 14250,
-    "rating": 4.9,
-    "ratingCount": 312,
-    "author": "צוות בית המדרש הדיגיטלי",
-    "tags": ["טריוויה", "תנ\"ך", "הלכה", "חגים", "פרשת השבוע"],
-    "thumbnailBg": "from-amber-600 via-amber-700 to-amber-900",
-    "iconName": "HelpCircle",
-    "instructions": [
-      "בחר קטגוריה ודרגת קושי מתאימה.",
-      "לכל שאלה יש 4 תשובות אפשריות וזמן קצוב של 20 שניות.",
-      "מענה מהיר ומדויק יעניק לך בונוס נקודות ומכפיל רצף (Streak).",
-      "תוכל להשתמש בגלגל ההצלה \"רמז מהמקורות\" פעם אחת בכל סיבוב."
-    ],
-    "torahSource": "משלי פרק ד׳: \"כִּי לֶקַח טוֹב נָתַתִּי לָכֶם תּוֹרָתִי אַל תַּעֲזֹבוּ\"",
-    "gameType": "trivia",
-    "isPopular": true,
-    "isNew": false,
-    "files": [
-      {
-        "name": "index.html",
-        "language": "html",
-        "content": "<!DOCTYPE html>\n<html dir=\"rtl\" lang=\"he\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>טריוויה יהודית</title>\n  <style>\n    body { font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; direction: rtl; text-align: center; }\n    #game-container { max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 16px; padding: 24px; border: 2px solid #f59e0b; }\n    h1 { color: #f59e0b; margin-bottom: 10px; }\n    .stats { display: flex; justify-content: space-around; background: #0f172a; padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 20px; }\n    .opt-btn { display: block; width: 100%; padding: 14px; margin: 8px 0; background: #334155; color: white; border: 2px solid #475569; border-radius: 10px; font-size: 1rem; cursor: pointer; text-align: right; font-weight: bold; }\n    .opt-btn:hover { background: #475569; border-color: #f59e0b; }\n    .opt-btn.correct { background: #166534; border-color: #22c55e; }\n    .opt-btn.wrong { background: #991b1b; border-color: #ef4444; }\n    #exp { background: #1e1b4b; border-right: 4px solid #818cf8; padding: 12px; margin-top: 15px; border-radius: 8px; text-align: right; display: none; }\n    #next-btn { width: 100%; padding: 12px; background: #f59e0b; color: #0f172a; border: none; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 12px; display: none; }\n  </style>\n</head>\n<body>\n  <div id=\"game-container\">\n    <h1>✨ טריוויה יהודית - אלופי התנ\"ך ✨</h1>\n    <div class=\"stats\">\n      <div>ניקוד: <span id=\"score\">0</span></div>\n      <div>רצף: <span id=\"streak\">🔥 0</span></div>\n    </div>\n    <h3 id=\"q-cat\" style=\"color:#38bdf8;\">פרשת השבוע</h3>\n    <h2 id=\"q-text\">טוען שאלה...</h2>\n    <div id=\"opts\"></div>\n    <div id=\"exp\"></div>\n    <button id=\"next-btn\">השאלה הבאה ➔</button>\n  </div>\n  <script>\n    const questions = [\n      { q: \"כמה ספרים יש בחמישה חומשי תורה?\", cat: \"תורה\", opts: [\"3 ספרים\", \"5 ספרים\", \"7 ספרים\", \"12 ספרים\"], c: 1, exp: \"חמישה חומשי תורה: בראשית, שמות, ויקרא, במדבר, דברים.\" },\n      { q: \"מה מברכים על לחם לפני האכילה?\", cat: \"ברכות\", opts: [\"בורא פרי העץ\", \"שהכל נהיה בדברו\", \"המוציא לחם מן הארץ\", \"בורא מיני מזונות\"], c: 2, exp: \"ברכת המוציא היא הברכה המיוחדת על לחם מחמשת מיני דגן.\" },\n      { q: \"איזה חג נקרא גם 'חג הקציר' ו'יום הביכורים'?\", cat: \"חגים\", opts: [\"פסח\", \"שבועות\", \"סוכות\", \"ראש השנה\"], c: 1, exp: \"חג השבועות חל בזמן קציר החטים והבאת הביכורים.\" },\n      { q: \"מי הנהיג את בני ישראל ביציאת מצרים?\", cat: \"תנ\"ך\", opts: [\"אברהם אבינו\", \"משה רבנו\", \"יהושע בן נון\", \"דוד המלך\"], c: 1, exp: \"משה רבנו הנהיג את עמו ביציאת מצרים וקבלת התורה.\" }\n    ];\n    let cur = 0, score = 0, streak = 0;\n    function loadQ() {\n      const q = questions[cur];\n      document.getElementById('q-cat').innerText = q.cat;\n      document.getElementById('q-text').innerText = q.q;\n      document.getElementById('exp').style.display = 'none';\n      document.getElementById('next-btn').style.display = 'none';\n      const div = document.getElementById('opts');\n      div.innerHTML = '';\n      q.opts.forEach((o, i) => {\n        const b = document.createElement('button');\n        b.className = 'opt-btn';\n        b.innerText = o;\n        b.onclick = () => {\n          document.querySelectorAll('.opt-btn').forEach((btn, idx) => {\n            btn.disabled = true;\n            if (idx === q.c) btn.classList.add('correct');\n            else if (idx === i) btn.classList.add('wrong');\n          });\n          if (i === q.c) { score += 100; streak++; }\n          else streak = 0;\n          document.getElementById('score').innerText = score;\n          document.getElementById('streak').innerText = '🔥 ' + streak;\n          document.getElementById('exp').innerText = '💡 ' + q.exp;\n          document.getElementById('exp').style.display = 'block';\n          document.getElementById('next-btn').style.display = 'block';\n        };\n        div.appendChild(b);\n      });\n    }\n    document.getElementById('next-btn').onclick = () => {\n      cur = (cur + 1) % questions.length;\n      loadQ();\n    };\n    loadQ();\n  </script>\n</body>\n</html>"
-      }
-    ]
-  },
-  {
-    "id": "time-count",
-    "title": "ניצול הזמן",
-    "subtitle": "חידון דעת אינטראקטיבי עם מאות שאלות בדרגות קושי משתנות",
-    "description": "בחן את ידיעותיך בתורה, תנ\"ך, מנהגים, חגים והלכות יומיות. צבור נקודות ועלה בדרגות!",
     "longDescription": "משחק טריוויה יהודי עשיר המשלב שאלות מגוונות מכל עולמות התוכן היהודיים: פרשת השבוע, חגי ישראל, הלכות ברכות, דמויות בתנ\"ך ומנהגי ישראל.",
     "category": "טריוויה ודעת",
     "difficulty": "לכל המשפחה",
@@ -110,8 +76,32 @@
     "iconName": "HelpCircle",
     "instructions": [
       "בחר קטגוריה ודרגת קושי מתאימה.",
-      "לכל שאלה יש 4 תשובות אפשריות וזמן קצוב של 20 שניות.",
-      "מענה מהיר ומדויק יעניק לך בונוס נקודות ומכפיל רצף (Streak)."
+      "לכל שאלה יש 4 תשובות אפשריות וזמן קצוב של 20 שניות."
+    ],
+    "torahSource": "משלי פרק ד׳: \"כִּי לֶקַח טוֹב נָתַתִּי לָכֶם תּוֹרָתִי אַל תַּעֲזֹבוּ\"",
+    "gameType": "trivia",
+    "isPopular": true,
+    "isNew": false,
+    "files": []
+  },
+  {
+    "id": "time-count",
+    "title": "ניצול הזמן",
+    "subtitle": "חידון דעת אינטראקטיבי עם מאות שאלות בדרגות קושי משתנות",
+    "description": "בחן את ידיעותיך בתורה, תנ\"ך, מנהגים, חגים והלכות יומיות. צבור נקודות ועלה בדרגות!",
+    "longDescription": "משחק טריוויה יהודי עשיר המשלב שאלות מגוונות מכל עולמות התוכן היהודיים.",
+    "category": "טריוויה ודעת",
+    "difficulty": "לכל המשפחה",
+    "ageRating": "גילאי 6+",
+    "playCount": 14250,
+    "rating": 4.9,
+    "ratingCount": 312,
+    "author": "צוות בית המדרש הדיגיטלי",
+    "tags": ["טריוויה", "תנ\"ך", "הלכה", "חגים"],
+    "thumbnailBg": "from-amber-600 via-amber-700 to-amber-900",
+    "iconName": "HelpCircle",
+    "instructions": [
+      "בחר קטגוריה ודרגת קושי מתאימה."
     ],
     "torahSource": "משלי פרק ד׳: \"כִּי לֶקַח טוֹב נָתַתִּי לָכֶם תּוֹרָתִי אַל תַּעֲזֹבוּ\"",
     "gameType": "trivia",
@@ -121,13 +111,7 @@
     "frameWidth": "375px",
     "frameHeight": "667px",
     "aspectRatio": "9/16",
-    "files": [
-      {
-        "name": "index.html",
-        "language": "html",
-        "content": "<!DOCTYPE html>\n<html dir=\"rtl\" lang=\"he\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>טריוויה יהודית</title>\n  <style>\n    body { font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; direction: rtl; text-align: center; }\n    #game-container { max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 16px; padding: 24px; border: 2px solid #f59e0b; }\n    h1 { color: #f59e0b; margin-bottom: 10px; }\n    .stats { display: flex; justify-content: space-around; background: #0f172a; padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 20px; }\n    .opt-btn { display: block; width: 100%; padding: 14px; margin: 8px 0; background: #334155; color: white; border: 2px solid #475569; border-radius: 10px; font-size: 1rem; cursor: pointer; text-align: right; font-weight: bold; }\n    .opt-btn:hover { background: #475569; border-color: #f59e0b; }\n    .opt-btn.correct { background: #166534; border-color: #22c55e; }\n    .opt-btn.wrong { background: #991b1b; border-color: #ef4444; }\n    #exp { background: #1e1b4b; border-right: 4px solid #818cf8; padding: 12px; margin-top: 15px; border-radius: 8px; text-align: right; display: none; }\n    #next-btn { width: 100%; padding: 12px; background: #f59e0b; color: #0f172a; border: none; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 12px; display: none; }\n  </style>\n</head>\n<body>\n  <div id=\"game-container\">\n    <h1>✨ טריוויה יהודית - אלופי התנ\"ך ✨</h1>\n    <div class=\"stats\">\n      <div>ניקוד: <span id=\"score\">0</span></div>\n      <div>רצף: <span id=\"streak\">🔥 0</span></div>\n    </div>\n    <h3 id=\"q-cat\" style=\"color:#38bdf8;\">פרשת השבוע</h3>\n    <h2 id=\"q-text\">טוען שאלה...</h2>\n    <div id=\"opts\"></div>\n    <div id=\"exp\"></div>\n    <button id=\"next-btn\">השאלה הבאה ➔</button>\n  </div>\n  <script>\n    const questions = [\n      { q: \"כמה ספרים יש בחמישה חומשי תורה?\", cat: \"תורה\", opts: [\"3 ספרים\", \"5 ספרים\", \"7 ספרים\", \"12 ספרים\"], c: 1, exp: \"חמישה חומשי תורה: בראשית, שמות, ויקרא, במדבר, דברים.\" },\n      { q: \"מה מברכים על לחם לפני האכילה?\", cat: \"ברכות\", opts: [\"בורא פרי העץ\", \"שהכל נהיה בדברו\", \"המוציא לחם מן הארץ\", \"בורא מיני מזונות\"], c: 2, exp: \"ברכת המוציא היא הברכה המיוחדת על לחם מחמשת מיני דגן.\" },\n      { q: \"איזה חג נקרא גם 'חג הקציר' ו'יום הביכורים'?\", cat: \"חגים\", opts: [\"פסח\", \"שבועות\", \"סוכות\", \"ראש השנה\"], c: 1, exp: \"חג השבועות חל בזמן קציר החטים והבאת הביכורים.\" },\n      { q: \"מי הנהיג את בני ישראל ביציאת מצרים?\", cat: \"תנ\"ך\", opts: [\"אברהם אבינו\", \"משה רבנו\", \"יהושע בן נון\", \"דוד המלך\"], c: 1, exp: \"משה רבנו הנהיג את עמו ביציאת מצרים וקבלת התורה.\" }\n    ];\n    let cur = 0, score = 0, streak = 0;\n    function loadQ() {\n      const q = questions[cur];\n      document.getElementById('q-cat').innerText = q.cat;\n      document.getElementById('q-text').innerText = q.q;\n      document.getElementById('exp').style.display = 'none';\n      document.getElementById('next-btn').style.display = 'none';\n      const div = document.getElementById('opts');\n      div.innerHTML = '';\n      q.opts.forEach((o, i) => {\n        const b = document.createElement('button');\n        b.className = 'opt-btn';\n        b.innerText = o;\n        b.onclick = () => {\n          document.querySelectorAll('.opt-btn').forEach((btn, idx) => {\n            btn.disabled = true;\n            if (idx === q.c) btn.classList.add('correct');\n            else if (idx === i) btn.classList.add('wrong');\n          });\n          if (i === q.c) { score += 100; streak++; }\n          else streak = 0;\n          document.getElementById('score').innerText = score;\n          document.getElementById('streak').innerText = '🔥 ' + streak;\n          document.getElementById('exp').innerText = '💡 ' + q.exp;\n          document.getElementById('exp').style.display = 'block';\n          document.getElementById('next-btn').style.display = 'block';\n        };\n        div.appendChild(b);\n      });\n    }\n    document.getElementById('next-btn').onclick = () => {\n      cur = (cur + 1) % questions.length;\n      loadQ();\n    };\n    loadQ();\n  </script>\n</body>\n</html>"
-      }
-    ]
+    "files": []
   },
   {
     "id": "brachot-runner-game",
@@ -153,54 +137,7 @@
     "gameType": "brachot",
     "isPopular": true,
     "isNew": false,
-    "externalUrl": "https://www.nadoc-games.com/TimeCount/",
-    "frameWidth": "100%",
-    "frameHeight": "550px",
-    "aspectRatio": "4/3",
-    "files": [
-      {
-        "name": "index.html",
-        "language": "html",
-        "content": "<!DOCTYPE html>\n<html dir=\"rtl\" lang=\"he\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>מרוץ הברכות</title>\n  <style>\n    body { font-family: system-ui, sans-serif; background: #064e3b; color: #ecfdf5; padding: 20px; direction: rtl; text-align: center; }\n    #game-card { max-width: 550px; margin: 0 auto; background: #047857; padding: 24px; border-radius: 20px; border: 3px solid #34d399; }\n    .food-display { font-size: 4rem; margin: 15px 0; }\n    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }\n    .b-btn { padding: 12px; background: #065f46; border: 2px solid #a7f3d0; color: white; font-size: 1.1rem; font-weight: bold; border-radius: 12px; cursor: pointer; }\n    .b-btn:hover { background: #047857; border-color: #f59e0b; }\n    #feedback { margin-top: 15px; font-size: 1.2rem; font-weight: bold; min-height: 30px; }\n  </style>\n</head>\n<body>\n  <div id=\"game-card\">\n    <h1>🍏 מרוץ הברכות והכשרות 🍎</h1>\n    <h2>מה הברכה הראשונה על המאכל?</h2>\n    <div class=\"food-display\" id=\"food-icon\">🍎</div>\n    <div id=\"food-name\" style=\"font-size:1.4rem; font-weight:bold;\">תפוח עץ מתוק</div>\n    <div class=\"btn-grid\">\n      <button class=\"b-btn\" onclick=\"check('העץ')\">🌳 בורא פרי העץ</button>\n      <button class=\"b-btn\" onclick=\"check('האדמה')\">🌱 בורא פרי האדמה</button>\n      <button class=\"b-btn\" onclick=\"check('שהכל')\">💧 שהכל נהיה בדברו</button>\n      <button class=\"b-btn\" onclick=\"check('המוציא')\">🍞 המוציא לחם</button>\n    </div>\n    <div id=\"feedback\"></div>\n  </div>\n  <script>\n    const foods = [\n      { name: 'תפוח עץ מתוק', icon: '🍎', blessing: 'העץ' },\n      { name: 'מלפפון ירוק', icon: '🥒', blessing: 'האדמה' },\n      { name: 'כוס מים צלולים', icon: '💧', blessing: 'שהכל' },\n      { name: 'פרוסת חלה טרייה', icon: '🍞', blessing: 'המוציא' }\n    ];\n    let idx = 0;\n    function check(b) {\n      const fb = document.getElementById('feedback');\n      if (b === foods[idx].blessing) {\n        fb.innerText = '✅ נכון מאוד! כל הכבוד!';\n        fb.style.color = '#a7f3d0';\n      } else {\n        fb.innerText = '❌ לא מדויק, נסה שוב!';\n        fb.style.color = '#fca5a5';\n      }\n      setTimeout(() => {\n        idx = (idx + 1) % foods.length;\n        document.getElementById('food-icon').innerText = foods[idx].icon;\n        document.getElementById('food-name').innerText = foods[idx].name;\n        fb.innerText = '';\n      }, 1200);\n    }\n  </script>\n</body>\n</html>"
-      }
-    ]
-  },
-  {
-    "id": "tanach-wordle-game",
-    "title": "מילון התנ\"ך - דמויות ומקומות",
-    "subtitle": "משחק מילים יומי לגילוי שמות ומושגים מפסוקי התנ\"ך",
-    "description": "פנח את המילה היומית בת 5 אותיות מתוך פסוקי התנ\"ך ב-6 ניסיונות! גלה רמזים, מילים נרדפות והקשר פסוקים.",
-    "longDescription": "משחק מילים בסגנון וורדל יהודי ייחודי. בכל יום מתחלפת מילה חדשה מתוך ספרי תורה, נביאים וכתובים.",
-    "category": "תנ\"ך ומורשת",
-    "difficulty": "מאתגר",
-    "ageRating": "גילאי 8+",
-    "playCount": 9600,
-    "rating": 4.9,
-    "ratingCount": 189,
-    "author": "מכון התנ\"ך הדיגיטלי",
-    "tags": ["תנ\"ך", "מילים", "חשיבה", "וורדל", "פסוקים"],
-    "thumbnailBg": "from-[#3d0066] via-[#5c0099] to-[#800080]",
-    "iconName": "BookOpen",
-    "instructions": [
-      "ניחוש מילה בת 5 אותיות מהתנ\"ך.",
-      "אות ירוקה = אות נכונה במקום הנכון.",
-      "אות צהובה = אות קיימת במילה אך במקום אחר."
-    ],
-    "torahSource": "יהושע פרק א׳: \"וְהָגִיתָ בּוֹ יוֹמָם וָלַיְלָה\"",
-    "gameType": "tanach_wordle",
-    "isPopular": false,
-    "isNew": true,
-    "externalUrl": "https://www.nadoc-games.com/TimeCount/",
-    "frameWidth": "100%",
-    "frameHeight": "600px",
-    "aspectRatio": "1/1",
-    "files": [
-      {
-        "name": "index.html",
-        "language": "html",
-        "content": "<!DOCTYPE html>\n<html dir=\"rtl\" lang=\"he\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>מילון התנ\"ך</title>\n  <style>\n    body { font-family: system-ui, sans-serif; background: #2e1065; color: #f3e8ff; padding: 20px; direction: rtl; text-align: center; }\n    #wordle-card { max-width: 500px; margin: 0 auto; background: #4c1d95; padding: 20px; border-radius: 20px; border: 2px solid #a855f7; }\n    .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 20px 0; dir: rtl; }\n    .cell { width: 50px; height: 50px; border: 2px solid #7e22ce; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; background: #3b0764; border-radius: 8px; margin: 0 auto; }\n    .correct { background: #15803d; border-color: #22c55e; }\n    input { width: 80%; padding: 12px; font-size: 1.2rem; text-align: center; border-radius: 10px; border: none; margin-bottom: 10px; font-weight: bold; }\n    button { padding: 12px 24px; background: #a855f7; color: white; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; }\n  </style>\n</head>\n<body>\n  <div id=\"wordle-card\">\n    <h1>📖 מילון התנ\"ך היומי 📖</h1>\n    <p>מצא מילה מפסוקי התנ\"ך (5 אותיות)</p>\n    <div class=\"grid\" id=\"grid\">\n      <div class=\"cell\">?</div><div class=\"cell\">?</div><div class=\"cell\">?</div><div class=\"cell\">?</div><div class=\"cell\">?</div>\n    </div>\n    <input type=\"text\" id=\"input\" maxlength=\"5\" placeholder=\"הכנס 5 אותיות...\">\n    <br>\n    <button onclick=\"guess()\">בדוק ניחוש ↵</button>\n    <div id=\"msg\" style=\"margin-top:15px; font-weight:bold;\"></div>\n  </div>\n  <script>\n    const secret = \"אברהם\";\n    function guess() {\n      const val = document.getElementById('input').value.trim();\n      if (val.length !== 5) { alert('הכנס מילה בת 5 אותיות!'); return; }\n      const cells = document.querySelectorAll('.cell');\n      for(let i=0; i<5; i++) {\n        cells[i].innerText = val[i];\n        if (val[i] === secret[i]) cells[i].className = 'cell correct';\n      }\n      if (val === secret) {\n        document.getElementById('msg').innerText = '🎉 כל הכבוד! גילית את שם אברהם אבינו!';\n      } else {\n        document.getElementById('msg').innerText = '💡 רמז: מדובר באחד מאבות האומה!';\n      }\n    }\n  </script>\n</body>\n</html>"
-      }
-    ]
+    "files": []
   },
   {
     "id": "shabbat-builder-game",
@@ -219,31 +156,20 @@
     "thumbnailBg": "from-[#002855] via-[#003566] to-[#004b23]",
     "iconName": "Flame",
     "instructions": [
-      "עבור בין חדרי הבית והשלם את משימות ההכנה לשבת.",
-      "זהה מה מותר ומה אסור לפי הלכות שבת."
+      "עבור בין חדרי הבית והשלם את משימות ההכנה לשבת."
     ],
     "torahSource": "שמות פרק כ׳: \"זָכוֹר אֶת יוֹם הַשַּׁבָּת לְקַדְּשׁוֹ\"",
     "gameType": "shabbat",
     "isPopular": false,
     "isNew": true,
-    "externalUrl": "https://www.nadoc-games.com/TimeCount/",
-    "frameWidth": "375px",
-    "frameHeight": "667px",
-    "aspectRatio": "9/16",
-    "files": [
-      {
-        "name": "index.html",
-        "language": "html",
-        "content": "<!DOCTYPE html>\n<html dir=\"rtl\" lang=\"he\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>בונה השבת</title>\n  <style>\n    body { font-family: system-ui, sans-serif; background: #030712; color: #f9fafb; padding: 20px; direction: rtl; text-align: center; }\n    .card { max-width: 550px; margin: 0 auto; background: #1e293b; padding: 24px; border-radius: 20px; border: 2px solid #fbbf24; }\n    h1 { color: #fbbf24; }\n    .task { background: #334155; padding: 12px; margin: 10px 0; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }\n    button { padding: 8px 16px; bg: #fbbf24; background: #d97706; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <h1>🕯️ בונה השבת - הכנות לכבוד שבת קודש 🕯️</h1>\n    <p>השלם את המשימות לכבוד שבת:</p>\n    <div class=\"task\">\n      <span>🕯️ הדלקת נרות שבת בזמן</span>\n      <button onclick=\"this.innerText='✅ הושלם'; this.style.background='#166534';\">בצע</button>\n    </div>\n    <div class=\"task\">\n      <span>🍷 הכנת גביע הקידוש והיין</span>\n      <button onclick=\"this.innerText='✅ הושלם'; this.style.background='#166534';\">בצע</button>\n    </div>\n    <div class=\"task\">\n      <span>🥖 כיסוי הלחם והחלות</span>\n      <button onclick=\"this.innerText='✅ הושלם'; this.style.background='#166534';\">בצע</button>\n    </div>\n  </div>\n</body>\n</html>"
-      }
-    ]
+    "files": []
   },
   {
     "id": "menorah-puzzle-game",
     "title": "חידת המנורה ובית המקדש",
     "subtitle": "משחק אסטרטגיה וחשיבה על כלי המקדש והמשכן",
     "description": "סדר את קני המנורה, כלי המקדש ובגדי הכהונה הגדול במקומם המדויק לפי פסוקי ספר שמות!",
-    "longDescription": "משחק פאזל ואסטרטגיה תלת-ממדי שבו לומדים על מבנה המשכן ובית המקדש, בגדי כהונה, המנורה, השולחן ומזבח הזהב.",
+    "longDescription": "משחק פאזל ואסטרטגיה שבו לומדים על מבנה המשכן ובית המקדש, בגדי כהונה, המנורה, השולחן ומזבח הזהב.",
     "category": "חשיבה ופאזל",
     "difficulty": "מאתגר",
     "ageRating": "גילאי 8+",
@@ -251,27 +177,16 @@
     "rating": 4.8,
     "ratingCount": 140,
     "author": "מכון המקדש החינוכי",
-    "tags": ["בית המקדש", "מנורה", "חשיבה", "פאזל", "כלי המקדש"],
+    "tags": ["בית המקדש", "מנורה", "חשיבה", "פאזל"],
     "thumbnailBg": "from-[#780000] via-[#c1121f] to-[#660708]",
     "iconName": "Sparkles",
     "instructions": [
-      "גרור והנח את חלקי הפאזל במקומם המדויק.",
-      "השתמש ברמזי הפסוקים כדי לדעת את המיקום הנכון."
+      "גרור והנח את חלקי הפאזל במקומם המדויק."
     ],
     "torahSource": "שמות פרק כ״ה: \"וְעָשִׂיתָ מְנֹרַת זָהָב טָהוֹר\"",
     "gameType": "menorah_puzzle",
     "isPopular": false,
     "isNew": false,
-    "externalUrl": "https://www.nadoc-games.com/TimeCount/",
-    "frameWidth": "100%",
-    "frameHeight": "500px",
-    "aspectRatio": "4/3",
-    "files": [
-      {
-        "name": "index.html",
-        "language": "html",
-        "content": "<!DOCTYPE html>\n<html dir=\"rtl\" lang=\"he\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>חידת המנורה</title>\n  <style>\n    body { font-family: system-ui, sans-serif; background: #450a0a; color: #fef2f2; padding: 20px; direction: rtl; text-align: center; }\n    .card { max-width: 500px; margin: 0 auto; background: #7f1d1d; padding: 20px; border-radius: 20px; border: 2px solid #f59e0b; }\n    .menorah { font-size: 5rem; margin: 15px 0; }\n    button { padding: 12px 24px; background: #f59e0b; color: #450a0a; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; font-size: 1.1rem; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <h1>🕎 חידת המנורה ובית המקדש 🕎</h1>\n    <div class=\"menorah\">🕍</div>\n    <p>הרכב את שבעת קני מנורת הטהור במקומם המדויק!</p>\n    <button onclick=\"alert('✨ כל הכבוד! המנורה דולקת באור יקרות!')\">הדלק את המנורה ✨</button>\n  </div>\n</body>\n</html>"
-      }
-    ]
+    "files": []
   }
 ]

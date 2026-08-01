@@ -56,8 +56,13 @@ public async fetchGamesFromCloud(): Promise<{ games: Game[]; status: CloudStatus
     }
     if (jsonRes.ok) {
       const data = await jsonRes.json();
-      const gamesArray: Game[] = Array.isArray(data) ? data : (data.games || []);
+      let gamesArray: Game[] = Array.isArray(data) ? data : (data.games || []);
       if (Array.isArray(gamesArray) && gamesArray.length > 0) {
+        gamesArray = gamesArray.map((g) => {
+          if (g.id === 'memory-jewish-game') return { ...g, gameType: 'native_memory', externalUrl: undefined };
+          if (g.id === 'tanach-wordle-game') return { ...g, gameType: 'native_wordle', externalUrl: undefined };
+          return g;
+        });
         localStorage.setItem(CACHE_KEY, JSON.stringify(gamesArray));
         const status: CloudStatus = {
           connected: true,
@@ -82,7 +87,11 @@ public async fetchGamesFromCloud(): Promise<{ games: Game[]; status: CloudStatus
     try {
       const parsed = JSON.parse(cached);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        fallbackGames = parsed;
+        fallbackGames = parsed.map((g: Game) => {
+          if (g.id === 'memory-jewish-game') return { ...g, gameType: 'native_memory', externalUrl: undefined };
+          if (g.id === 'tanach-wordle-game') return { ...g, gameType: 'native_wordle', externalUrl: undefined };
+          return g;
+        });
       }
     } catch (e) {
       console.error('Error parsing cached games', e);
