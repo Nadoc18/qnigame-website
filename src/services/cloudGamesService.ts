@@ -41,6 +41,20 @@ const sanitizeGame = (game: Game): Game => {
   return game;
 };
 
+const ensureNativeGamesPresent = (games: Game[]): Game[] => {
+  const sanitized = games.map(sanitizeGame);
+  const nativeIds = ['tanach-wordle-game', 'memory-jewish-game'];
+  for (const nativeId of nativeIds) {
+    if (!sanitized.some((g) => g.id === nativeId)) {
+      const nativeGame = GAMES_LIST.find((g) => g.id === nativeId);
+      if (nativeGame) {
+        sanitized.unshift(nativeGame);
+      }
+    }
+  }
+  return sanitized;
+};
+
 export class CloudGamesService {
   private static instance: CloudGamesService;
 
@@ -64,7 +78,7 @@ export class CloudGamesService {
     try {
       const gamesList = await getGamesFromFirestore();
       if (gamesList && Array.isArray(gamesList) && gamesList.length > 0) {
-        const sanitized = gamesList.map(sanitizeGame);
+        const sanitized = ensureNativeGamesPresent(gamesList);
         localStorage.setItem(CACHE_KEY, JSON.stringify(sanitized));
         const status: CloudStatus = {
           connected: true,
@@ -90,7 +104,7 @@ export class CloudGamesService {
         const data = await jsonRes.json();
         const gamesArray: Game[] = Array.isArray(data) ? data : (data.games || []);
         if (Array.isArray(gamesArray) && gamesArray.length > 0) {
-          const sanitized = gamesArray.map(sanitizeGame);
+          const sanitized = ensureNativeGamesPresent(gamesArray);
           localStorage.setItem(CACHE_KEY, JSON.stringify(sanitized));
           const status: CloudStatus = {
             connected: true,
@@ -108,7 +122,7 @@ export class CloudGamesService {
     }
 
     // 3. Fallback to GAMES_LIST
-    const sanitized = GAMES_LIST.map(sanitizeGame);
+    const sanitized = ensureNativeGamesPresent(GAMES_LIST);
     const status: CloudStatus = {
       connected: true,
       loading: false,
