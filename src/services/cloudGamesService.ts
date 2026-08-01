@@ -1,6 +1,6 @@
 import { Game } from '../types';
 import { GAMES_LIST } from '../data/gamesData';
-import { getGamesFromFirestore, syncGameToFirestore } from '../lib/firebase';
+import { getGamesFromFirestore } from '../lib/firebase';
 
 export interface CloudStatus {
   connected: boolean;
@@ -27,13 +27,13 @@ export class CloudGamesService {
   }
 
   public async fetchGamesFromCloud(): Promise<{ games: Game[]; status: CloudStatus }> {
-    // Purge old cache to ensure fresh list
+    // Purge old cache to ensure fresh list from Firebase
     try {
       localStorage.removeItem(CACHE_KEY);
       localStorage.removeItem(CACHE_STATUS_KEY);
     } catch (e) {}
 
-    // 1. Try Firestore DB
+    // 1. Try Firebase Firestore DB
     try {
       const gamesList = await getGamesFromFirestore();
       if (gamesList && Array.isArray(gamesList) && gamesList.length > 0) {
@@ -43,7 +43,7 @@ export class CloudGamesService {
           loading: false,
           lastUpdated: new Date().toISOString(),
           totalGames: gamesList.length,
-          source: 'Firestore Database', 
+          source: 'Firebase Firestore', 
         };
         localStorage.setItem(CACHE_STATUS_KEY, JSON.stringify(status));
         return { games: gamesList, status };
@@ -88,41 +88,6 @@ export class CloudGamesService {
     };
 
     return { games: GAMES_LIST, status };
-  }
-
-  // Add a new game to the Cloud
-  public async addGameToCloud(newGame: Partial<Game>): Promise<{ success: boolean; game?: Game; error?: string }> {
-    try {
-      const gameToAdd: Game = {
-        id: newGame.id || `game_${Date.now()}`,
-        title: newGame.title || 'משחק חדש',
-        subtitle: newGame.subtitle || '',
-        description: newGame.description || '',
-        longDescription: newGame.longDescription || '',
-        category: newGame.category || 'טריוויה ודעת',
-        difficulty: newGame.difficulty || 'לכל המשפחה',
-        ageRating: newGame.ageRating || 'גילאי 6+',
-        playCount: newGame.playCount || 0,
-        rating: newGame.rating || 5.0,
-        ratingCount: newGame.ratingCount || 1,
-        author: newGame.author || 'יוצר קניגיים',
-        tags: newGame.tags || ['משחק חדש'],
-        thumbnailBg: newGame.thumbnailBg || 'from-indigo-600 to-purple-800',
-        iconName: newGame.iconName || 'Gamepad2',
-        instructions: newGame.instructions || ['שחק ותהנה!'],
-        torahSource: newGame.torahSource,
-        gameType: newGame.gameType || 'trivia',
-        isPopular: false,
-        isNew: true,
-        externalUrl: newGame.externalUrl,
-        files: newGame.files || [],
-      };
-
-      await syncGameToFirestore(gameToAdd);
-      return { success: true, game: gameToAdd };
-    } catch (error: any) {
-      return { success: false, error: error?.message || 'שגיאה בהוספת המשחק' };
-    }
   }
 }
 

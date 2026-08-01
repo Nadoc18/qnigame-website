@@ -82,16 +82,6 @@ export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestore
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 
-// Sync / Save a game document directly to Firestore
-export const syncGameToFirestore = async (game: Game): Promise<void> => {
-  try {
-    const gameRef = doc(db, 'games', game.id);
-    await setDoc(gameRef, game, { merge: true });
-  } catch (error) {
-    console.warn(`Error syncing game ${game.id} to Firestore:`, error);
-  }
-};
-
 // Fetch games list from Firestore (single read call)
 export const getGamesFromFirestore = async (): Promise<Game[]> => {
   const gamesPath = 'games';
@@ -107,7 +97,7 @@ export const getGamesFromFirestore = async (): Promise<Game[]> => {
     });
     return games;
   } catch (error) {
-    console.warn('Error fetching games from Firestore, falling back to local list:', error);
+    console.warn('Error fetching games from Firestore:', error);
     return [];
   }
 };
