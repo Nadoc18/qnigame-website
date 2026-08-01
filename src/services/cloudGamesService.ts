@@ -54,12 +54,10 @@ export class CloudGamesService {
   }
 
   public async fetchGamesFromCloud(): Promise<{ games: Game[]; status: CloudStatus }> {
-    // Clear legacy localStorage cache on fetch
+    // Unconditionally purge old games cache on fetch to ensure fresh games list
     try {
-      const cachedStatus = localStorage.getItem(CACHE_STATUS_KEY);
-      if (cachedStatus && !cachedStatus.includes('v2_clean')) {
-        localStorage.removeItem(CACHE_KEY);
-      }
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(CACHE_STATUS_KEY);
     } catch (e) {}
 
     // 1. Try Firestore DB

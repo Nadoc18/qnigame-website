@@ -308,11 +308,11 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               )}
 
               {/* 3. The Actual Preloaded Game Iframe or Native Component */}
-              {game.gameType === 'native_memory' ? (
+              {game.id === 'memory-jewish-game' || game.gameType === 'native_memory' ? (
                 <div className="w-full h-full bg-[#1c3817] p-4 overflow-y-auto">
                   <MemoryGame onRecordScore={(score) => onRecordScore(game.id, score)} />
                 </div>
-              ) : game.gameType === 'native_wordle' ? (
+              ) : game.id === 'tanach-wordle-game' || game.gameType === 'native_wordle' ? (
                 <div className="w-full h-full bg-[#1c3817] p-4 overflow-y-auto">
                   <TanachWordle onRecordScore={(score) => onRecordScore(game.id, score)} />
                 </div>
