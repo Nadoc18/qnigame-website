@@ -361,17 +361,22 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           </div>
 
           {/* Frame Footer Bar */}
-          <div className="px-4 py-2.5 bg-indigo-950 border-t border-indigo-900 flex items-center justify-between text-xs text-indigo-200 shrink-0 font-medium">
-            <div className="flex items-center gap-4">
-              <span>יוצר: <strong className="text-yellow-300 font-bold">{game.author}</strong></span>
-              <span>דרגה: <strong className="text-white font-bold">{game.difficulty}</strong></span>
+          {!isFullscreen && (
+            <div className="px-4 py-2.5 bg-indigo-950 border-t border-indigo-900 flex items-center justify-between text-xs text-indigo-200 shrink-0 font-medium">
+              <div className="flex items-center gap-4">
+                <span>יוצר: <strong className="text-yellow-300 font-bold">{game.author}</strong></span>
+                <span>דרגה: <strong className="text-white font-bold">{game.difficulty}</strong></span>
+              </div>
+              <div className="flex items-center gap-1 text-yellow-300 font-black">
+                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                <span>{game.rating} ({game.ratingCount} דירוגים)</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1 text-yellow-300 font-black">
-              <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-              <span>{game.rating} ({game.ratingCount} דירוגים)</span>
-            </div>
-          </div>
+          )}
         </div>
+
+        {!isFullscreen && (
+          <>
 
         {/* Instructions & Torah Sources Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -513,6 +518,8 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             ))}
           </div>
         </div>
+        </>
+        )}
 
       </div>
     </div>
