@@ -1,0 +1,260 @@
+import React from 'react';
+import { Trophy, Crown, Award, Star, Flame, Sparkles, User, ShieldCheck } from 'lucide-react';
+import { UserProfile } from '../types';
+
+interface LeaderboardProps {
+  currentUser: UserProfile;
+}
+
+interface LeaderboardUser {
+  id: string;
+  rank: number;
+  username: string;
+  title: string;
+  level: number;
+  points: number;
+  playsCount: number;
+  avatarIcon: string;
+  badgeCount: number;
+  isCurrentUser?: boolean;
+}
+
+const MOCK_LEADERBOARD: Omit<LeaderboardUser, 'rank'>[] = [
+  {
+    id: 'l1',
+    username: 'אהרן דוד',
+    title: 'שר התורה',
+    level: 12,
+    points: 3420,
+    playsCount: 88,
+    avatarIcon: '👑',
+    badgeCount: 8,
+  },
+  {
+    id: 'l2',
+    username: 'יונתן תורני',
+    title: 'עילוי בתורה',
+    level: 9,
+    points: 2780,
+    playsCount: 64,
+    avatarIcon: '📜',
+    badgeCount: 6,
+  },
+  {
+    id: 'l3',
+    username: 'שלמה כהן',
+    title: 'תלמיד חכם',
+    level: 8,
+    points: 2150,
+    playsCount: 52,
+    avatarIcon: '🎓',
+    badgeCount: 5,
+  },
+  {
+    id: 'l4',
+    username: 'אריאל הלוי',
+    title: 'בחור כהלכה',
+    level: 6,
+    points: 1690,
+    playsCount: 39,
+    avatarIcon: '🦁',
+    badgeCount: 4,
+  },
+  {
+    id: 'l5',
+    username: 'בנימין ש.',
+    title: 'בחור כהלכה',
+    level: 5,
+    points: 1240,
+    playsCount: 28,
+    avatarIcon: '🌟',
+    badgeCount: 3,
+  },
+  {
+    id: 'l6',
+    username: 'אליקים ג.',
+    title: 'לומד שוקד',
+    level: 4,
+    points: 890,
+    playsCount: 21,
+    avatarIcon: '🕯️',
+    badgeCount: 2,
+  },
+];
+
+export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
+  const statsList = Object.values(currentUser.gameStats || {}) as Array<{ playsCount: number }>;
+  const userPlaysCount = statsList.reduce((acc, s) => acc + (s.playsCount || 0), 0) || 15;
+
+  // Integrate current user into list
+  const rawList: Omit<LeaderboardUser, 'rank'>[] = [
+    ...MOCK_LEADERBOARD,
+    {
+      id: currentUser.id,
+      username: currentUser.username,
+      title: currentUser.title || 'תלמיד חכם',
+      level: currentUser.level,
+      points: currentUser.points,
+      playsCount: userPlaysCount,
+      avatarIcon: currentUser.avatarIcon || '🎓',
+      badgeCount: currentUser.badges.filter((b) => b.unlocked).length,
+      isCurrentUser: true,
+    },
+  ];
+
+  const fullList: LeaderboardUser[] = rawList
+    .sort((a, b) => b.points - a.points)
+    .map((item, idx) => ({
+      ...item,
+      rank: idx + 1,
+    }));
+
+  const top3 = fullList.slice(0, 3);
+  const restList = fullList.slice(3);
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-right" dir="rtl">
+      
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-[#2f4d21] via-[#233a18] to-[#2f4d21] border-2 border-[#3e632c] rounded-3xl p-6 sm:p-8 shadow-xl text-white relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2 text-center sm:text-right">
+            <span className="text-xs px-3 py-1 rounded-full bg-[#c99719]/30 border border-[#c99719]/50 text-[#f5d77f] font-black inline-block">
+              טבלת האלופים
+            </span>
+            <h1 className="text-3xl sm:text-4xl font-black text-white">טבלת המובילים והאלופים</h1>
+            <p className="text-xs sm:text-sm text-emerald-100 max-w-lg font-medium">
+              השחקנים והלומדים המובילים בניקוד, דרגות והישגי תורה בפורטל קניגיים.
+            </p>
+          </div>
+
+          <div className="w-20 h-20 rounded-3xl bg-[#c99719] p-1 shadow-2xl flex items-center justify-center text-4xl shrink-0">
+            🏆
+          </div>
+        </div>
+      </div>
+
+      {/* Top 3 Podium Showcase */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+        {/* Rank 2 (Silver) */}
+        {top3[1] && (
+          <div className={`order-2 md:order-1 bg-white border-2 border-slate-300 rounded-3xl p-6 shadow-lg text-center space-y-3 relative overflow-hidden ${top3[1].isCurrentUser ? 'ring-4 ring-amber-400' : ''}`}>
+            <div className="absolute top-3 right-3 text-2xl font-black text-slate-400">🥈 #2</div>
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 border-2 border-slate-300 text-3xl mx-auto flex items-center justify-center shadow-md">
+              {top3[1].avatarIcon}
+            </div>
+            <div>
+              <h3 className="font-black text-slate-900 text-lg">{top3[1].username}</h3>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-300 inline-block mt-1">
+                {top3[1].title}
+              </span>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+              <div className="text-xl font-black text-slate-800">{top3[1].points} <span className="text-xs text-slate-500 font-normal">נק׳</span></div>
+              <div className="text-[11px] text-slate-500 font-bold mt-0.5">רמה {top3[1].level}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Rank 1 (Gold Winner) */}
+        {top3[0] && (
+          <div className={`order-1 md:order-2 bg-gradient-to-b from-amber-500/10 via-amber-400/5 to-white border-4 border-amber-400 rounded-3xl p-7 shadow-2xl text-center space-y-4 relative overflow-hidden md:-translate-y-4 ${top3[0].isCurrentUser ? 'ring-4 ring-amber-500' : ''}`}>
+            <div className="absolute top-3 right-3 text-3xl font-black text-amber-500">🥇 #1</div>
+            <div className="w-20 h-20 rounded-3xl bg-amber-400 border-4 border-amber-300 text-4xl mx-auto flex items-center justify-center shadow-xl shadow-amber-400/30">
+              {top3[0].avatarIcon}
+            </div>
+            <div>
+              <h3 className="font-black text-slate-950 text-xl">{top3[0].username}</h3>
+              <span className="text-xs px-3 py-1 rounded-full bg-amber-400/30 text-amber-900 font-black border border-amber-400 inline-block mt-1">
+                👑 {top3[0].title}
+              </span>
+            </div>
+            <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 p-3.5 rounded-2xl shadow-md">
+              <div className="text-2xl font-black">{top3[0].points} <span className="text-xs font-bold">נק׳</span></div>
+              <div className="text-[11px] font-extrabold mt-0.5">רמה {top3[0].level} • אלוף התורה</div>
+            </div>
+          </div>
+        )}
+
+        {/* Rank 3 (Bronze) */}
+        {top3[2] && (
+          <div className={`order-3 bg-white border-2 border-amber-700/30 rounded-3xl p-6 shadow-lg text-center space-y-3 relative overflow-hidden ${top3[2].isCurrentUser ? 'ring-4 ring-amber-400' : ''}`}>
+            <div className="absolute top-3 right-3 text-2xl font-black text-amber-700">🥉 #3</div>
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 border-2 border-amber-200 text-3xl mx-auto flex items-center justify-center shadow-md">
+              {top3[2].avatarIcon}
+            </div>
+            <div>
+              <h3 className="font-black text-slate-900 text-lg">{top3[2].username}</h3>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 font-bold border border-amber-200 inline-block mt-1">
+                {top3[2].title}
+              </span>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+              <div className="text-xl font-black text-slate-800">{top3[2].points} <span className="text-xs text-slate-500 font-normal">נק׳</span></div>
+              <div className="text-[11px] text-slate-500 font-bold mt-0.5">רמה {top3[2].level}</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Leaderboard Table List */}
+      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-md">
+        <div className="px-6 py-4 bg-slate-100 border-b border-slate-200 font-black text-xs text-slate-700 grid grid-cols-12 gap-2">
+          <div className="col-span-1 text-center">מיקום</div>
+          <div className="col-span-5 sm:col-span-4">שחקן</div>
+          <div className="col-span-3 sm:col-span-3">תואר תורני</div>
+          <div className="col-span-3 sm:col-span-2 text-center">רמה</div>
+          <div className="hidden sm:block col-span-2 text-left">ניקוד</div>
+        </div>
+
+        <div className="divide-y divide-slate-100">
+          {fullList.map((user) => (
+            <div
+              key={user.id}
+              className={`px-6 py-4 grid grid-cols-12 gap-2 items-center text-sm transition-all ${
+                user.isCurrentUser
+                  ? 'bg-amber-50/90 border-r-4 border-amber-400 font-black'
+                  : 'hover:bg-slate-50'
+              }`}
+            >
+              <div className="col-span-1 text-center font-black text-slate-700">
+                #{user.rank}
+              </div>
+
+              <div className="col-span-5 sm:col-span-4 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-lg shrink-0">
+                  {user.avatarIcon}
+                </div>
+                <div>
+                  <div className="font-black text-slate-900 flex items-center gap-1.5">
+                    <span>{user.username}</span>
+                    {user.isCurrentUser && (
+                      <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full font-bold">
+                        אתה
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-3 sm:col-span-3">
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-[#2f4d21] border border-emerald-200 inline-block">
+                  {user.title}
+                </span>
+              </div>
+
+              <div className="col-span-3 sm:col-span-2 text-center font-bold text-slate-600">
+                רמה {user.level}
+              </div>
+
+              <div className="hidden sm:block col-span-2 text-left font-black text-[#c99719] text-base">
+                {user.points} נק׳
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+};

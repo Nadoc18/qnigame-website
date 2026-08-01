@@ -29,6 +29,7 @@ interface FirebaseAuthModalProps {
   onClose: () => void;
   currentUser: UserProfile;
   onAuthSuccess?: () => void;
+  customMessage?: string;
 }
 
 export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
@@ -36,6 +37,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   onClose,
   currentUser,
   onAuthSuccess,
+  customMessage,
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
@@ -169,9 +171,11 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
             {currentUser.isFirebaseUser ? 'חשבון שחקן מחובר' : mode === 'login' ? 'התחברות לחשבון' : mode === 'register' ? 'יצירת חשבון שחקן' : 'איפוס סיסמה'}
           </h2>
           <p className="text-xs text-slate-600 font-medium max-w-xs mx-auto">
-            {currentUser.isFirebaseUser 
-              ? 'הנתונים, הנקודות והמשחקים המועדפים שלך נשמרים ומגובים בחשבונך האישי'
-              : 'התחבר כדי לשמור את הישגי המשחק, הנקודות והמועדפים שלך בכל מכשיר'}
+            {customMessage 
+              ? customMessage 
+              : currentUser.isFirebaseUser 
+                ? 'הנתונים, הנקודות והמשחקים המועדפים שלך נשמרים ומגובים בחשבונך האישי'
+                : 'התחבר כדי לשמור את הישגי המשחק, הנקודות והמועדפים שלך בכל מכשיר'}
           </p>
         </div>
 

@@ -8,15 +8,16 @@ import {
   Volume2, 
   VolumeX, 
   Search, 
-  UserCheck
+  UserCheck,
+  Trophy
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { soundManager } from '../utils/audio';
 import { QnigameLogo } from './QnigameLogo';
 
 interface HeaderProps {
-  activeTab: 'landing' | 'news' | 'account';
-  setActiveTab: (tab: 'landing' | 'news' | 'account') => void;
+  activeTab: 'landing' | 'news' | 'leaderboard' | 'account';
+  setActiveTab: (tab: 'landing' | 'news' | 'leaderboard' | 'account') => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   user: UserProfile;
@@ -119,6 +120,18 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Gamepad2 className={`w-4 h-4 ${activeTab === 'landing' ? 'animate-bounce' : ''}`} />
               <span className="hidden sm:inline">ספריית משחקים</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('leaderboard'); soundManager.playClick(); }}
+              className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 ${
+                activeTab === 'leaderboard'
+                  ? 'bg-gradient-to-r from-[#f5c242] to-[#e5af24] text-[#122810] shadow-[0_0_18px_rgba(245,194,66,0.45)] scale-105 border border-amber-200'
+                  : 'text-emerald-100 hover:text-white hover:bg-white/10 border border-transparent'
+              }`}
+            >
+              <Trophy className="w-4 h-4 text-amber-300" />
+              <span className="hidden sm:inline">טבלת המובילים</span>
             </button>
 
             <button

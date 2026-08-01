@@ -22,6 +22,8 @@ import { FirebaseAuthModal } from './components/FirebaseAuthModal';
 import { auth, syncUserProfile, saveUserProfileToFirestore } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
+import { Leaderboard } from './components/Leaderboard';
+
 const INITIAL_USER: UserProfile = {
   id: 'user-1',
   username: 'לומד תורה',
@@ -56,7 +58,7 @@ const INITIAL_USER: UserProfile = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'landing' | 'news' | 'account'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'news' | 'leaderboard' | 'account'>('landing');
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [selectedNewsId, setSelectedNewsId] = useState<string | undefined>(undefined);
   
@@ -185,9 +187,27 @@ export default function App() {
     });
   };
 
+  const [pendingGameId, setPendingGameId] = useState<string | null>(null);
+  const [authCustomMsg, setAuthCustomMsg] = useState<string | undefined>(undefined);
+
   const handleSelectGame = (gameId: string) => {
+    if (!user.isFirebaseUser) {
+      setPendingGameId(gameId);
+      setAuthCustomMsg('כדי לשחק ולשמור את הניקוד וההישגים שלך, יש להתחבר לחשבון שחקן');
+      setIsAuthModalOpen(true);
+      return;
+    }
     setSelectedGameId(gameId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAuthSuccess = () => {
+    if (pendingGameId) {
+      setSelectedGameId(pendingGameId);
+      setPendingGameId(null);
+      setAuthCustomMsg(undefined);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleOpenNews = (articleId: string) => {
@@ -206,8 +226,13 @@ export default function App() {
       {/* Auth Login/Register Modal */}
       <FirebaseAuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthCustomMsg(undefined);
+        }}
         currentUser={user}
+        customMessage={authCustomMsg}
+        onAuthSuccess={handleAuthSuccess}
       />
 
       {/* Top Shabbat Mode Banner */}
@@ -267,6 +292,8 @@ export default function App() {
             articles={NEWS_ARTICLES}
             selectedArticleId={selectedNewsId}
           />
+        ) : activeTab === 'leaderboard' ? (
+          <Leaderboard currentUser={user} />
         ) : (
           <AccountProfile
             user={user}
