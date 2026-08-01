@@ -51,7 +51,7 @@
       "אות באפור: אינה מופיעה במילה כלל.",
       "יש לך 6 ניסיונות לגלות את המילה ולהרוויח נקודות!"
     ],
-    "torahSource": "משלי פרק ט״ז: \"מַרְפֵּא לָלָשׁוֹן עֵץ חַיִּים\"",
+    "torahSource": "משלי פרק ט״ז: "מַרְפֵּא לָלָשׁוֹן עֵץ חַיִּים"",
     "gameType": "native_wordle",
     "isPopular": true,
     "isNew": true,
@@ -165,6 +165,31 @@
     "gameType": "shabbat",
     "isPopular": false,
     "isNew": true,
+    "files": []
+  },
+  {
+    "id": "sayar-tanach-game",
+    "title": "סייר התנ\"ך - דמויות ומקומות",
+    "subtitle": "משחק מילים ומחשבה לגילוי דמויות, שופטים, מלכים ומקומות בתנ\"ך",
+    "description": "נחש את דמות התנ\"ך היומית בעזרת רמזים מתוך הפסוקים ומערכת אותיות חכמה.",
+    "longDescription": "סייר התנ\"ך הוא משחק אתגר מילים המוקדש כולו לתנ\"ך.",
+    "category": "תנ\"ך ומורשת",
+    "difficulty": "מאתגר",
+    "ageRating": "גילאי 8+",
+    "playCount": 16800,
+    "rating": 4.95,
+    "ratingCount": 420,
+    "author": "מכון סיירי התנ\"ך",
+    "tags": ["תנ\"ך", "משחק מילים", "מחשבה", "פסוקים"],
+    "thumbnailBg": "from-purple-800 via-purple-900 to-slate-900",
+    "iconName": "Compass",
+    "instructions": [
+      "הקלד שם של דמות תנ\"כית בעלת מספר האותיות הנדרש."
+    ],
+    "torahSource": "יהושע פרק א׳: \"וְהָגִיתָ בּוֹ יוֹמָם וָלַיְלָה\"",
+    "gameType": "sayar_tanach",
+    "isPopular": true,
+    "isNew": false,
     "files": []
   },
   {
