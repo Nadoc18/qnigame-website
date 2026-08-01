@@ -210,6 +210,21 @@ export default function App() {
     }
   };
 
+  const handleQuickTestLogin = () => {
+    setUser((prev) => ({
+      ...prev,
+      username: prev.username || 'לומד תורה',
+      isFirebaseUser: true,
+    }));
+    setIsAuthModalOpen(false);
+    if (pendingGameId) {
+      setSelectedGameId(pendingGameId);
+      setPendingGameId(null);
+      setAuthCustomMsg(undefined);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const handleOpenNews = (articleId: string) => {
     setSelectedNewsId(articleId);
     setActiveTab('news');
@@ -233,6 +248,7 @@ export default function App() {
         currentUser={user}
         customMessage={authCustomMsg}
         onAuthSuccess={handleAuthSuccess}
+        onQuickTestLogin={handleQuickTestLogin}
       />
 
       {/* Top Shabbat Mode Banner */}

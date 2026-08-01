@@ -30,6 +30,7 @@ interface FirebaseAuthModalProps {
   currentUser: UserProfile;
   onAuthSuccess?: () => void;
   customMessage?: string;
+  onQuickTestLogin?: () => void;
 }
 
 export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
@@ -38,6 +39,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   currentUser,
   onAuthSuccess,
   customMessage,
+  onQuickTestLogin,
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
@@ -354,6 +356,23 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                   </>
                 )}
               </button>
+
+              {/* Quick Test Mode Login Button for Local Testing */}
+              {onQuickTestLogin && (
+                <div className="pt-2 border-t border-slate-100 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundManager.playCorrect();
+                      if (onQuickTestLogin) onQuickTestLogin();
+                    }}
+                    className="w-full py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-400/50 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>⚡ כניסת ניסיון מהירה (ללא סיסמה)</span>
+                  </button>
+                </div>
+              )}
             </form>
 
           </div>
