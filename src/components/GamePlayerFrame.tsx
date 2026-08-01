@@ -138,10 +138,38 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
     setGameState('splash');
   };
 
+  const frameBoxRef = useRef<HTMLDivElement>(null);
+
   const handleFullscreenToggle = () => {
     soundManager.playClick();
-    setIsFullscreen(!isFullscreen);
+    if (!document.fullscreenElement) {
+      if (frameBoxRef.current?.requestFullscreen) {
+        frameBoxRef.current.requestFullscreen().catch((err) => console.warn(err));
+      } else if ((frameBoxRef.current as any)?.webkitRequestFullscreen) {
+        (frameBoxRef.current as any).webkitRequestFullscreen();
+      }
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch((err) => console.warn(err));
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+      setIsFullscreen(false);
+    }
   };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,12 +238,15 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
         </div>
 
         {/* Game Player Frame Box */}
-        <div className={`relative bg-[#233a18] border-4 border-[#3e632c] rounded-2xl overflow-hidden shadow-2xl transition-all ${
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none p-0 bg-[#1f3416] flex flex-col' : ''
-        }`}>
+        <div 
+          ref={frameBoxRef}
+          className={`relative bg-[#233a18] border-4 border-[#3e632c] rounded-2xl overflow-hidden shadow-2xl transition-all ${
+            isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none p-0 bg-black flex flex-col w-screen h-screen' : ''
+          }`}
+        >
           
           {/* Frame Control Bar */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#2f4d21] border-b border-[#3e632c] shrink-0 text-white">
+          <div className="flex items-center justify-between px-4 py-3 bg-[#2f4d21] border-b border-[#3e632c] shrink-0 text-white z-40">
             <div className="flex items-center gap-2 text-xs">
               <span className="w-3 h-3 rounded-full bg-[#c99719] inline-block animate-pulse"></span>
               <span className="font-extrabold text-white">מסגרת אינטראקטיבית (HTML5 Game Frame)</span>
@@ -241,8 +272,8 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
               <button
                 onClick={handleFullscreenToggle}
-                title={isFullscreen ? 'צא מיוזמת מסך מלא' : 'מסך מלא'}
-                className="p-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-indigo-950 transition-all flex items-center gap-1.5 text-xs font-black shadow-sm"
+                title={isFullscreen ? 'צא ממסך מלא' : 'מסך מלא'}
+                className="p-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-indigo-950 transition-all flex items-center gap-1.5 text-xs font-black shadow-sm cursor-pointer"
               >
                 {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                 <span className="hidden sm:inline">{isFullscreen ? 'מזער מסך' : 'מסך מלא'}</span>
@@ -251,23 +282,28 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           </div>
 
           {/* Interactive HTML5 / JSON Game Frame Window with Preloader & Intro Video */}
-          <div className={`relative bg-slate-950 w-full flex items-center justify-center p-2 overflow-auto ${isFullscreen ? 'flex-1 h-full p-0' : 'min-h-[450px] max-h-[85vh]'}`}>
+          <div className={`relative bg-black w-full flex items-center justify-center p-2 overflow-hidden ${isFullscreen ? 'flex-1 h-full w-full bg-black p-0' : 'min-h-[450px] max-h-[85vh]'}`}>
             
             <div 
               className={`relative bg-black mx-auto overflow-hidden transition-all duration-300 ${
-                isFullscreen ? 'w-full h-full' : 'rounded-2xl border border-indigo-900/60 shadow-2xl'
+                isFullscreen ? 'h-full max-h-screen w-auto max-w-full flex items-center justify-center shadow-2xl' : 'rounded-2xl border border-indigo-900/60 shadow-2xl'
               }`}
               style={
                 !isFullscreen
                   ? {
-                      width: game.frameWidth && game.frameWidth !== '100%' ? game.frameWidth : '100%',
+                      width: game.frameWidth && game.frameWidth !== '100%' ? game.frameWidth : '375px',
                       maxWidth: '100%',
                       height: game.frameHeight && game.frameHeight !== '100%' ? game.frameHeight : undefined,
                       maxHeight: '80vh',
-                      aspectRatio: game.aspectRatio ? game.aspectRatio.replace('/', ' / ') : undefined,
+                      aspectRatio: game.aspectRatio ? game.aspectRatio.replace('/', ' / ') : '9 / 16',
                       minHeight: (!game.frameHeight || game.frameHeight === '100%') && !game.aspectRatio ? '550px' : undefined
                     }
-                  : undefined
+                  : {
+                      height: '100%',
+                      maxHeight: '100vh',
+                      maxWidth: '100vw',
+                      aspectRatio: game.aspectRatio ? game.aspectRatio.replace('/', ' / ') : '9 / 16',
+                    }
               }
             >
 
