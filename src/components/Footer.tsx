@@ -1,8 +1,13 @@
 import React from 'react';
 import { Flame, Heart, Shield, Star, Award, Sparkles, BookOpen } from 'lucide-react';
 import { QnigameLogo } from './QnigameLogo';
+import { ShabbatInfo } from '../utils/shabbat';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  shabbatInfo?: ShabbatInfo | null;
+}
+
+export const Footer: React.FC<FooterProps> = ({ shabbatInfo }) => {
   return (
     <footer className="relative bg-gradient-to-b from-[#11230e] via-[#0c1a0a] to-[#060e05] border-t border-emerald-500/20 text-emerald-100 pt-12 pb-8 px-4 sm:px-6 lg:px-8 overflow-hidden">
       {/* Top Gaming LED Line */}
@@ -47,25 +52,28 @@ export const Footer: React.FC = () => {
           <div className="absolute -top-10 -right-10 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center gap-2 text-[#f5c242] font-black mb-3 text-sm">
             <Flame className="w-4 h-4 text-amber-400 animate-pulse drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
-            <span>זמני שבת קודש (משוער)</span>
+            <span>זמני שבת קודש</span>
           </div>
           <div className="space-y-2 text-xs font-semibold">
             <div className="flex justify-between pb-1.5 border-b border-emerald-500/20">
-              <span className="text-emerald-300">פרשת השבוע:</span>
-              <span className="text-white font-black">פרשת פנחס</span>
+              <span className="text-emerald-300">הפעלה אוטומטית:</span>
+              <span className="text-emerald-400 font-bold">
+                לפי מיקום ({shabbatInfo?.locationName || 'ירושלים'})
+              </span>
             </div>
             <div className="flex justify-between pb-1.5 border-b border-emerald-500/20">
               <span className="text-emerald-300">כניסת שבת:</span>
-              <span className="text-[#f5c242] font-mono font-black text-sm">19:18</span>
+              <span className="text-[#f5c242] font-mono font-black text-sm">
+                {shabbatInfo?.candleLightingStr || '19:18'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-emerald-300">יציאת שבת:</span>
-              <span className="text-[#f5c242] font-mono font-black text-sm">20:22</span>
+              <span className="text-[#f5c242] font-mono font-black text-sm">
+                {shabbatInfo?.havdalahStr || '20:22'}
+              </span>
             </div>
           </div>
-          <p className="text-[11px] text-emerald-400/80 mt-3 text-center font-bold">
-            * זמנים משוערים לאזור המרכז. יש להתעדכן בלוחות השנה.
-          </p>
         </div>
 
         {/* Values & Safety */}

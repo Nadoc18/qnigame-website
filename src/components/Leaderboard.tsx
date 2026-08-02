@@ -4,6 +4,7 @@ import { UserProfile } from '../types';
 
 interface LeaderboardProps {
   currentUser: UserProfile;
+  onOpenAuthModal?: () => void;
 }
 
 interface LeaderboardUser {
@@ -82,24 +83,28 @@ const MOCK_LEADERBOARD: Omit<LeaderboardUser, 'rank'>[] = [
   },
 ];
 
-export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
+export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAuthModal }) => {
   const statsList = Object.values(currentUser.gameStats || {}) as Array<{ playsCount: number }>;
   const userPlaysCount = statsList.reduce((acc, s) => acc + (s.playsCount || 0), 0) || 15;
 
-  // Integrate current user into list
+  // Integrate current user into list only if logged in via Firebase
   const rawList: Omit<LeaderboardUser, 'rank'>[] = [
     ...MOCK_LEADERBOARD,
-    {
-      id: currentUser.id,
-      username: currentUser.username,
-      title: currentUser.title || 'תלמיד חכם',
-      level: currentUser.level,
-      points: currentUser.points,
-      playsCount: userPlaysCount,
-      avatarIcon: currentUser.avatarIcon || '🎓',
-      badgeCount: currentUser.badges.filter((b) => b.unlocked).length,
-      isCurrentUser: true,
-    },
+    ...(currentUser.isFirebaseUser
+      ? [
+          {
+            id: currentUser.id,
+            username: currentUser.username,
+            title: currentUser.title || 'תלמיד חכם',
+            level: currentUser.level,
+            points: currentUser.points,
+            playsCount: userPlaysCount,
+            avatarIcon: currentUser.avatarIcon || '🎓',
+            badgeCount: currentUser.badges.filter((b) => b.unlocked).length,
+            isCurrentUser: true,
+          },
+        ]
+      : []),
   ];
 
   const fullList: LeaderboardUser[] = rawList
@@ -115,6 +120,29 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-right" dir="rtl">
       
+      {/* Guest Notice Banner */}
+      {!currentUser.isFirebaseUser && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-amber-500/20 border-2 border-amber-400/50 rounded-3xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-800">
+          <div className="flex items-center gap-3 text-right">
+            <div className="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center text-2xl font-black shrink-0 shadow">
+              🏆
+            </div>
+            <div>
+              <h3 className="font-black text-base text-slate-900">רוצה להופיע בטבלת המובילים?</h3>
+              <p className="text-xs text-slate-600 font-medium">התחבר לחשבון שחקן ב-Firebase כדי שכל הנקודות וההישגים שלך יישמרו ותוכל להתחרות באלופים!</p>
+            </div>
+          </div>
+          {onOpenAuthModal && (
+            <button
+              onClick={onOpenAuthModal}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-md transition-transform hover:scale-105 shrink-0"
+            >
+              התחברות לחשבון שחקן
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-[#2f4d21] via-[#233a18] to-[#2f4d21] border-2 border-[#3e632c] rounded-3xl p-6 sm:p-8 shadow-xl text-white relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">

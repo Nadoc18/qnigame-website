@@ -22,39 +22,27 @@ import { FirebaseAuthModal } from './components/FirebaseAuthModal';
 import { auth, syncUserProfile, saveUserProfileToFirestore, subscribeToUserProfile } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
+import { getShabbatTimes, ShabbatInfo } from './utils/shabbat';
+import { ShabbatRestScreen } from './components/ShabbatRestScreen';
 import { Leaderboard } from './components/Leaderboard';
 
 const INITIAL_USER: UserProfile = {
-  id: 'user-1',
-  username: 'לומד תורה',
-  title: 'תלמיד חכם',
-  level: 3,
-  points: 450,
-  coins: 120,
-  avatarIcon: '🎓',
-  avatarBg: 'from-amber-500 to-amber-700',
-  joinedDate: 'תמוז תשפ"ו',
-  favoriteGameIds: ['trivia-jewish-master', 'brachot-runner-game'],
+  id: 'user-guest',
+  username: 'אורח',
+  title: 'אורח',
+  level: 1,
+  points: 0,
+  coins: 0,
+  avatarIcon: '👤',
+  avatarBg: 'from-emerald-500 to-emerald-700',
+  joinedDate: '',
+  favoriteGameIds: [],
   badges: INITIAL_BADGES,
-  gameStats: {
-    'trivia-jewish-master': {
-      gameId: 'trivia-jewish-master',
-      gameTitle: 'טריוויה יהודית - אלופי התנ"ך וההלכה',
-      highScore: 320,
-      playsCount: 12,
-      lastPlayed: 'אתמול',
-    },
-    'brachot-runner-game': {
-      gameId: 'brachot-runner-game',
-      gameTitle: 'מרוץ הברכות והכשרות',
-      highScore: 150,
-      playsCount: 5,
-      lastPlayed: 'לפני 3 ימים',
-    },
-  },
-  bio: 'אוהב ללמוד תורה דרך משחקים ומשימות דעת עם המשפחה והחברים.',
+  gameStats: {},
+  bio: 'לומד תורה וערכים בקניגיים.',
   shabbatModeEnabled: false,
   soundEnabled: true,
+  isFirebaseUser: false,
 };
 
 export default function App() {
@@ -64,14 +52,16 @@ export default function App() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<GameCategory>('הכל');
-  const [shabbatMode, setShabbatMode] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
+
+  // Automated Shabbat detection state
+  const [shabbatInfo, setShabbatInfo] = useState<ShabbatInfo | null>(null);
 
   // Games library state
   const [gamesList, setGamesList] = useState<Game[]>(GAMES_LIST);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // Load Games automatically on startup
+  // Load Games & Shabbat times automatically on startup
   const loadGames = async () => {
     try {
       const result = await cloudGamesService.fetchGamesFromCloud();
@@ -85,6 +75,7 @@ export default function App() {
 
   useEffect(() => {
     loadGames();
+    getShabbatTimes().then(setShabbatInfo).catch(console.error);
   }, []);
 
   // Load / Save state from localStorage
@@ -154,6 +145,13 @@ export default function App() {
       saveUserProfileToFirestore(user);
     }
   }, [user]);
+
+  // If user is not logged in and attempts to view 'account' tab, redirect to landing
+  useEffect(() => {
+    if (!user.isFirebaseUser && activeTab === 'account') {
+      setActiveTab('landing');
+    }
+  }, [user.isFirebaseUser, activeTab]);
 
   useEffect(() => {
     soundManager.enabled = soundOn;
@@ -275,10 +273,29 @@ export default function App() {
 
   const currentGame = gamesList.find((g) => g.id === selectedGameId);
 
+  const isShabbatActive = Boolean(shabbatInfo?.isShabbat);
+
+  // If Shabbat is currently active according to Hebcal/geolocation, show full-screen Shabbat Rest Screen
+  if (isShabbatActive) {
+    return (
+      <ShabbatRestScreen
+        shabbatInfo={
+          shabbatInfo || {
+            isShabbat: true,
+            parasha: 'פרשת השבוע',
+            candleLightingStr: '19:18',
+            havdalahStr: '20:22',
+            candleLightingDate: null,
+            havdalahDate: null,
+            locationName: 'ישראל',
+          }
+        }
+      />
+    );
+  }
+
   return (
-    <div className={`min-h-screen font-sans flex flex-col transition-colors duration-300 ${
-      shabbatMode ? 'bg-[#1f3416] text-amber-100' : 'bg-slate-50 text-slate-800'
-    }`} dir="rtl">
+    <div className="min-h-screen font-sans flex flex-col transition-colors duration-300 bg-slate-50 text-slate-800" dir="rtl">
 
       {/* Auth Login/Register Modal */}
       <FirebaseAuthModal
@@ -291,12 +308,6 @@ export default function App() {
         customMessage={authCustomMsg}
         onAuthSuccess={handleAuthSuccess}
         onQuickTestLogin={handleQuickTestLogin}
-      />
-
-      {/* Top Shabbat Mode Banner */}
-      <ShabbatBanner
-        shabbatMode={shabbatMode}
-        onClose={() => setShabbatMode(false)}
       />
 
       {/* Main Header */}
@@ -313,8 +324,6 @@ export default function App() {
           if (activeTab !== 'landing') setActiveTab('landing');
         }}
         user={user}
-        shabbatMode={shabbatMode}
-        setShabbatMode={setShabbatMode}
         soundOn={soundOn}
         setSoundOn={setSoundOn}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
@@ -351,7 +360,10 @@ export default function App() {
             selectedArticleId={selectedNewsId}
           />
         ) : activeTab === 'leaderboard' ? (
-          <Leaderboard currentUser={user} />
+          <Leaderboard 
+            currentUser={user} 
+            onOpenAuthModal={() => setIsAuthModalOpen(true)} 
+          />
         ) : (
           <AccountProfile
             user={user}
@@ -365,7 +377,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <Footer />
+      <Footer shabbatInfo={shabbatInfo} />
     </div>
   );
 }
