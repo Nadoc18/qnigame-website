@@ -39,9 +39,90 @@ export interface Game {
   frameHeight?: string;
   aspectRatio?: string;
   introVideoUrl?: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+  thumbnail?: string;
+  image?: string;
+  photo?: string;
+  thumbnail_url?: string;
+  image_url?: string;
   isPopular?: boolean;
   isNew?: boolean;
 }
+
+export const cleanImageUrl = (rawUrl?: string): string | undefined => {
+  if (!rawUrl || typeof rawUrl !== 'string') return undefined;
+  const str = rawUrl.trim();
+  if (!str) return undefined;
+
+  // Convert Firebase gs:// URI to public HTTPS URL
+  if (str.startsWith('gs://')) {
+    const gsPath = str.slice(5);
+    const firstSlashIdx = gsPath.indexOf('/');
+    if (firstSlashIdx > 0) {
+      const bucket = gsPath.slice(0, firstSlashIdx);
+      const filePath = gsPath.slice(firstSlashIdx + 1);
+      return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(filePath)}?alt=media`;
+    }
+    return undefined;
+  }
+
+  // Allow standard web schemes
+  if (
+    str.startsWith('http://') ||
+    str.startsWith('https://') ||
+    str.startsWith('data:') ||
+    str.startsWith('blob:') ||
+    str.startsWith('/') ||
+    str.startsWith('./') ||
+    str.startsWith('../')
+  ) {
+    if (str.includes('firebasestorage.googleapis.com') && !str.includes('alt=')) {
+      const sep = str.includes('?') ? '&' : '?';
+      return `${str}${sep}alt=media`;
+    }
+    return str;
+  }
+
+  // If it's a relative filename ending in an image extension
+  if (/\.(png|jpg|jpeg|webp|svg|gif)(\?.*)?$/i.test(str)) {
+    return str;
+  }
+
+  // Reject any unknown schemes (like intent://, app://, etc.) to prevent ERR_UNKNOWN_URL_SCHEME
+  return undefined;
+};
+
+export const isImageUrl = (val?: string): boolean => {
+  return cleanImageUrl(val) !== undefined;
+};
+
+export const getGameThumbnailUrl = (game?: Partial<Game> | Record<string, any>): string | undefined => {
+  if (!game) return undefined;
+  const val = (
+    game.thumbnailUrl ||
+    game.imageUrl ||
+    game.thumbnail ||
+    game.image ||
+    game.photo ||
+    game.thumbnail_url ||
+    game.image_url
+  );
+  const cleanedVal = cleanImageUrl(val);
+  if (cleanedVal) return cleanedVal;
+
+  const cleanedBg = cleanImageUrl(game.thumbnailBg);
+  if (cleanedBg) return cleanedBg;
+
+  return undefined;
+};
+
+export const getGameThumbnailBgClass = (game?: Partial<Game> | Record<string, any>): string => {
+  if (!game || !game.thumbnailBg || isImageUrl(game.thumbnailBg)) {
+    return 'from-emerald-600 via-teal-700 to-emerald-900';
+  }
+  return game.thumbnailBg;
+};
 
 export interface Badge {
   id: string;
@@ -68,6 +149,9 @@ export interface UserProfile {
   email?: string;
   isFirebaseUser?: boolean;
   username: string;
+  firstName?: string;
+  lastName?: string;
+  age?: number;
   title: string;
   level: number;
   points: number;
@@ -101,6 +185,7 @@ export interface NewsArticle {
 export interface GameComment {
   id: string;
   gameId: string;
+  userId?: string;
   userName: string;
   userAvatar: string;
   userTitle: string;

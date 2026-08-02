@@ -66,6 +66,9 @@
         "gameType": { "type": "string", "description": "Type key" },
         "externalUrl": { "type": "string", "description": "Optional iframe URL" },
         "playUrl": { "type": "string", "description": "Optional direct play URL" },
+        "imageUrl": { "type": "string", "description": "Cover photo URL from Firebase Storage bucket" },
+        "thumbnailUrl": { "type": "string", "description": "Thumbnail photo URL" },
+        "introVideoUrl": { "type": "string", "description": "Intro video MP4 URL" },
         "isPopular": { "type": "boolean", "description": "Is popular badge" },
         "isNew": { "type": "boolean", "description": "Is new badge" }
       },

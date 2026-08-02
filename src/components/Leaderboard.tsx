@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trophy, Crown, Award, Star, Flame, Sparkles, User, ShieldCheck } from 'lucide-react';
 import { UserProfile } from '../types';
+import { formatInitials } from '../utils/format';
 
 interface LeaderboardProps {
   currentUser: UserProfile;
@@ -11,6 +12,8 @@ interface LeaderboardUser {
   id: string;
   rank: number;
   username: string;
+  firstName?: string;
+  lastName?: string;
   title: string;
   level: number;
   points: number;
@@ -63,7 +66,7 @@ const MOCK_LEADERBOARD: Omit<LeaderboardUser, 'rank'>[] = [
   },
   {
     id: 'l5',
-    username: 'בנימין ש.',
+    username: 'בנימין שרעבי',
     title: 'בחור כהלכה',
     level: 5,
     points: 1240,
@@ -73,7 +76,7 @@ const MOCK_LEADERBOARD: Omit<LeaderboardUser, 'rank'>[] = [
   },
   {
     id: 'l6',
-    username: 'אליקים ג.',
+    username: 'אליקים גרינברג',
     title: 'לומד שוקד',
     level: 4,
     points: 890,
@@ -95,6 +98,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
           {
             id: currentUser.id,
             username: currentUser.username,
+            firstName: currentUser.firstName,
+            lastName: currentUser.lastName,
             title: currentUser.title || 'תלמיד חכם',
             level: currentUser.level,
             points: currentUser.points,
@@ -152,7 +157,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
             </span>
             <h1 className="text-3xl sm:text-4xl font-black text-white">טבלת המובילים והאלופים</h1>
             <p className="text-xs sm:text-sm text-emerald-100 max-w-lg font-medium">
-              השחקנים והלומדים המובילים בניקוד, דרגות והישגי תורה בפורטל קניגיים.
+              השחקנים והלומדים המובילים בניקוד, דרגות והישגי תורה (מוצג בראשי תיבות לשמירה על פרטיות).
             </p>
           </div>
 
@@ -172,7 +177,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
               {top3[1].avatarIcon}
             </div>
             <div>
-              <h3 className="font-black text-slate-900 text-lg">{top3[1].username}</h3>
+              <h3 className="font-black text-slate-900 text-lg">
+                {top3[1].isCurrentUser ? top3[1].username : formatInitials(top3[1].username, top3[1].firstName, top3[1].lastName)}
+              </h3>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-300 inline-block mt-1">
                 {top3[1].title}
               </span>
@@ -192,7 +199,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
               {top3[0].avatarIcon}
             </div>
             <div>
-              <h3 className="font-black text-slate-950 text-xl">{top3[0].username}</h3>
+              <h3 className="font-black text-slate-950 text-xl">
+                {top3[0].isCurrentUser ? top3[0].username : formatInitials(top3[0].username, top3[0].firstName, top3[0].lastName)}
+              </h3>
               <span className="text-xs px-3 py-1 rounded-full bg-amber-400/30 text-amber-900 font-black border border-amber-400 inline-block mt-1">
                 👑 {top3[0].title}
               </span>
@@ -212,7 +221,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
               {top3[2].avatarIcon}
             </div>
             <div>
-              <h3 className="font-black text-slate-900 text-lg">{top3[2].username}</h3>
+              <h3 className="font-black text-slate-900 text-lg">
+                {top3[2].isCurrentUser ? top3[2].username : formatInitials(top3[2].username, top3[2].firstName, top3[2].lastName)}
+              </h3>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 font-bold border border-amber-200 inline-block mt-1">
                 {top3[2].title}
               </span>
@@ -255,7 +266,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
                 </div>
                 <div>
                   <div className="font-black text-slate-900 flex items-center gap-1.5">
-                    <span>{user.username}</span>
+                    <span>{user.isCurrentUser ? user.username : formatInitials(user.username, user.firstName, user.lastName)}</span>
                     {user.isCurrentUser && (
                       <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full font-bold">
                         אתה

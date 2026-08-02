@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Game, GameCategory, NewsArticle, UserProfile } from '../types';
+import { Game, GameCategory, NewsArticle, UserProfile, getGameThumbnailUrl, getGameThumbnailBgClass } from '../types';
 import { 
   Gamepad2, 
   Sparkles, 
@@ -151,8 +151,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 🔥 משחק השבוע
               </div>
 
-              <div className={`h-36 rounded-2xl bg-gradient-to-br ${featuredGame.thumbnailBg} flex items-center justify-center mb-3 relative overflow-hidden group-hover:scale-[1.02] transition-transform`}>
-                <div className="w-12 h-12 rounded-full bg-[#2f4d21]/80 backdrop-blur-md flex items-center justify-center text-white shadow-xl">
+              <div className={`h-36 rounded-2xl bg-gradient-to-br ${getGameThumbnailBgClass(featuredGame)} flex items-center justify-center mb-3 relative overflow-hidden group-hover:scale-[1.02] transition-transform`}>
+                {getGameThumbnailUrl(featuredGame) && (
+                  <img
+                    src={getGameThumbnailUrl(featuredGame)}
+                    alt={featuredGame.title}
+                    className="absolute inset-0 w-full h-full object-cover z-0 transition-transform duration-500 group-hover:scale-110"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )}
+                <div className="w-12 h-12 rounded-full bg-[#2f4d21]/80 backdrop-blur-md flex items-center justify-center text-white shadow-xl relative z-10">
                   <Play className="w-6 h-6 fill-[#c99719] text-[#c99719] translate-x-0.5" />
                 </div>
               </div>
@@ -250,8 +260,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               >
                 <div>
                   {/* Thumbnail */}
-                  <div className={`h-40 bg-gradient-to-br ${game.thumbnailBg} p-4 flex flex-col justify-between relative overflow-hidden`}>
-                    <div className="flex items-center justify-between">
+                  <div className={`h-40 bg-gradient-to-br ${getGameThumbnailBgClass(game)} p-4 flex flex-col justify-between relative overflow-hidden`}>
+                    {getGameThumbnailUrl(game) && (
+                      <img
+                        src={getGameThumbnailUrl(game)}
+                        alt={game.title}
+                        className="absolute inset-0 w-full h-full object-cover z-0 transition-transform duration-500 group-hover:scale-110"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    )}
+                    <div className="flex items-center justify-between relative z-10">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[11px] font-black px-3 py-1 rounded-full bg-[#2f4d21]/80 backdrop-blur-md text-[#f5d77f] border border-[#c99719]/40">
                           {game.category}
@@ -274,13 +294,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       </button>
                     </div>
 
-                    <div className="text-center">
+                    <div className="text-center relative z-10">
                       <div className="w-12 h-12 rounded-2xl bg-[#2f4d21]/60 backdrop-blur-md border border-white/30 mx-auto flex items-center justify-center text-[#c99719] mb-2 shadow-lg group-hover:scale-110 transition-transform">
                         <Play className="w-6 h-6 fill-[#c99719] translate-x-0.5" />
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-white font-bold bg-[#2f4d21]/50 px-2.5 py-0.5 rounded-md backdrop-blur-sm">
+                    <div className="flex items-center justify-between text-[11px] text-white font-bold bg-[#2f4d21]/50 px-2.5 py-0.5 rounded-md backdrop-blur-sm relative z-10">
                       <span>{game.difficulty}</span>
                       <span>{game.ageRating}</span>
                     </div>

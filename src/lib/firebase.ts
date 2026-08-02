@@ -18,10 +18,14 @@ import {
   getDocs,
   collection,
   onSnapshot,
+  addDoc,
+  query,
+  where,
+  orderBy,
   serverTimestamp 
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { UserProfile, Game } from '../types';
+import { UserProfile, Game, GameComment } from '../types';
 
 export enum OperationType {
   CREATE = 'create',
@@ -113,6 +117,9 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       id: firebaseUser.uid,
       email: firebaseUser.email || undefined,
       username: data.username || firebaseUser.displayName || 'משתמש רשום',
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      age: data.age || undefined,
       title: data.title || 'תלמיד חכם',
       level: data.level || 1,
       points: data.points || 0,
@@ -187,6 +194,9 @@ export const subscribeToUserProfile = (userId: string, callback: (profile: Parti
         id: userId,
         email: data.email || undefined,
         username: data.username || 'משתמש רשום',
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        age: data.age || undefined,
         title: data.title || 'תלמיד חכם',
         level: data.level || 1,
         points: data.points || 0,
@@ -224,4 +234,87 @@ export const logout = () => {
 
 export const resetPassword = (email: string) => {
   return sendPasswordResetEmail(auth, email);
+};
+
+// ==========================================
+// GAME COMMENTS FIRESTORE INTEGRATION
+// ==========================================
+
+/**
+ * Subscribe to live game comments in Firestore for a given game
+ */
+export const subscribeToGameComments = (
+  gameId: string,
+  callback: (comments: GameComment[]) => void
+) => {
+  if (!gameId) return () => {};
+  try {
+    const commentsRef = collection(db, 'gameComments');
+    const q = query(
+      commentsRef,
+      where('gameId', '==', gameId),
+      orderBy('createdAt', 'desc')
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list: GameComment[] = snap.docs.map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            gameId: data.gameId || gameId,
+            userId: data.userId,
+            userName: data.userName || 'שחקן',
+            userAvatar: data.userAvatar || '🎓',
+            userTitle: data.userTitle || 'לומד תורה',
+            rating: data.rating || 5,
+            content: data.content || '',
+            timestamp: data.timestamp || 'מקרוב',
+            likes: data.likes || 0,
+          };
+        });
+        callback(list);
+      },
+      (error) => {
+        console.warn('Firestore gameComments subscription note:', error);
+      }
+    );
+  } catch (err) {
+    console.error('Error setting up comments snapshot:', err);
+    return () => {};
+  }
+};
+
+/**
+ * Add a new comment for a game to Firestore
+ */
+export const addGameCommentToFirestore = async (
+  commentData: Omit<GameComment, 'id'>
+) => {
+  try {
+    const commentsRef = collection(db, 'gameComments');
+    const docRef = await addDoc(commentsRef, {
+      ...commentData,
+      createdAt: new Date().toISOString(),
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error adding comment to Firestore:', error);
+    throw error;
+  }
+};
+
+/**
+ * Increment likes count for a comment in Firestore
+ */
+export const likeGameCommentInFirestore = async (
+  commentId: string,
+  currentLikes: number
+) => {
+  try {
+    const commentRef = doc(db, 'gameComments', commentId);
+    await setDoc(commentRef, { likes: currentLikes + 1 }, { merge: true });
+  } catch (error) {
+    console.error('Error updating comment likes in Firestore:', error);
+  }
 };

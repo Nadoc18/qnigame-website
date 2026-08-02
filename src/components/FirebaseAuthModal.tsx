@@ -19,10 +19,14 @@ import {
   registerWithEmail, 
   loginWithGoogle, 
   logout, 
-  resetPassword 
+  resetPassword,
+  saveUserProfileToFirestore
 } from '../lib/firebase';
 import { soundManager } from '../utils/audio';
 import { UserProfile } from '../types';
+import confetti from 'canvas-confetti';
+
+const AVATAR_OPTIONS = ['🎓', '👑', '🕯️', '📜', '🦁', '🌟', '🕊️', '✡️', '🎒', '🏆'];
 
 interface FirebaseAuthModalProps {
   isOpen: boolean;
@@ -42,9 +46,16 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   onQuickTestLogin,
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [isOnboarding, setIsOnboarding] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  
+  // Onboarding profile fields
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState('🎓');
+  const [age, setAge] = useState<number>(10);
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -54,7 +65,11 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   const resetForm = () => {
     setEmail('');
     setPassword('');
-    setDisplayName('');
+    setFirstName('');
+    setLastName('');
+    setSelectedAvatar('🎓');
+    setAge(10);
+    setIsOnboarding(false);
     setErrorMsg(null);
     setSuccessMsg(null);
   };
@@ -83,11 +98,8 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
         }
         await registerWithEmail(email, password);
         soundManager.playCorrect();
-        setSuccessMsg('החשבון נוצר בהצלחה! הישגייך נשמרו בחשבונך.');
-        setTimeout(() => {
-          onClose();
-          if (onAuthSuccess) onAuthSuccess();
-        }, 1200);
+        // Switch to Onboarding Profile Step for initial registration
+        setIsOnboarding(true);
       } else if (mode === 'forgot') {
         if (!email) throw new Error('אנא הזן כתובת אימייל.');
         await resetPassword(email);
@@ -110,6 +122,47 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
         message = err.message;
       }
       setErrorMsg(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveOnboarding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firstName.trim() || !lastName.trim()) {
+      setErrorMsg('אנא הזן שם פרטי ושם משפחה.');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      soundManager.playCorrect();
+      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      const updatedProfile: UserProfile = {
+        ...currentUser,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        age: Number(age) || 10,
+        avatarIcon: selectedAvatar,
+        username: fullName,
+        isFirebaseUser: true,
+      };
+
+      await saveUserProfileToFirestore(updatedProfile);
+      setSuccessMsg('פרופיל השחקן שלך הוגדר בהצלחה! 🎉');
+
+      setTimeout(() => {
+        setIsOnboarding(false);
+        onClose();
+        if (onAuthSuccess) onAuthSuccess();
+      }, 1200);
+    } catch (err: any) {
+      console.error('Save Onboarding Error:', err);
+      setErrorMsg('אירעה שגיאה בשמירת הפרופיל.');
     } finally {
       setLoading(false);
     }
@@ -181,8 +234,102 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
           </p>
         </div>
 
-        {/* If Already Logged In as User */}
-        {currentUser.isFirebaseUser ? (
+        {/* If in Onboarding Profile Mode */}
+        {isOnboarding ? (
+          <form onSubmit={handleSaveOnboarding} className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-center text-xs text-amber-900 font-medium">
+              <span className="font-bold block mb-1">🔒 שמירה על פרטיות מלאה!</span>
+              השמות שלך נשמרים בדיסקרטיות. בטבלת המובילים ובתגובות <strong>יוצגו ראשי תיבות בלבד</strong> (למשל: א. ד.)
+            </div>
+
+            {errorMsg && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">שם פרטי *</label>
+                <input
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="למשל: אהרן"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">שם משפחה *</label>
+                <input
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="למשל: דוד"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700">גיל השחקן</label>
+              <input
+                type="number"
+                min={4}
+                max={99}
+                value={age}
+                onChange={(e) => setAge(Number(e.target.value))}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 block">בחירת סמל / אווטאר לשחקן:</label>
+              <div className="grid grid-cols-5 gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+                {AVATAR_OPTIONS.map((icon) => (
+                  <button
+                    key={icon}
+                    type="button"
+                    onClick={() => setSelectedAvatar(icon)}
+                    className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                      selectedAvatar === icon
+                        ? 'bg-amber-400 border-2 border-slate-900 scale-110 shadow-md'
+                        : 'bg-white border border-slate-200 hover:bg-amber-50'
+                    }`}
+                  >
+                    {icon}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 mt-2 bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>שמור פרופיל והתחל לשחק!</span>
+                </>
+              )}
+            </button>
+          </form>
+        ) : currentUser.isFirebaseUser ? (
           <div className="space-y-6">
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center space-y-3">
               <div className="flex items-center justify-center gap-2 text-emerald-800 font-black text-sm">

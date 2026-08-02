@@ -97,6 +97,8 @@ async function startServer() {
       author: newGame.author || 'יוצר המשחק',
       tags: newGame.tags || ['משחק חדש'],
       thumbnailBg: newGame.thumbnailBg || 'from-emerald-600 via-teal-700 to-emerald-900',
+      thumbnailUrl: newGame.thumbnailUrl || newGame.imageUrl || newGame.thumbnail || newGame.image || newGame.photo || undefined,
+      imageUrl: newGame.imageUrl || newGame.thumbnailUrl || newGame.thumbnail || newGame.image || newGame.photo || undefined,
       iconName: newGame.iconName || 'Gamepad2',
       instructions: newGame.instructions || ['לחץ על שחק כדי להתחיל'],
       torahSource: newGame.torahSource || 'קניגיים Qnigame - עננים של דעת',

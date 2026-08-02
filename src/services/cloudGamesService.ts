@@ -1,6 +1,15 @@
-import { Game } from '../types';
+import { Game, getGameThumbnailUrl } from '../types';
 import { GAMES_LIST } from '../data/gamesData';
 import { getGamesFromFirestore } from '../lib/firebase';
+
+const normalizeGame = (game: any): Game => {
+  const thumb = getGameThumbnailUrl(game);
+  return {
+    ...game,
+    thumbnailUrl: thumb || game.thumbnailUrl,
+    imageUrl: thumb || game.imageUrl,
+  };
+};
 
 export interface CloudStatus {
   connected: boolean;
@@ -35,8 +44,9 @@ export class CloudGamesService {
 
     // 1. Try Firebase Firestore DB
     try {
-      const gamesList = await getGamesFromFirestore();
-      if (gamesList && Array.isArray(gamesList) && gamesList.length > 0) {
+      const rawGamesList = await getGamesFromFirestore();
+      if (rawGamesList && Array.isArray(rawGamesList) && rawGamesList.length > 0) {
+        const gamesList = rawGamesList.map(normalizeGame);
         localStorage.setItem(CACHE_KEY, JSON.stringify(gamesList));
         const status: CloudStatus = {
           connected: true,
@@ -60,8 +70,9 @@ export class CloudGamesService {
       }
       if (jsonRes.ok) {
         const data = await jsonRes.json();
-        const gamesArray: Game[] = Array.isArray(data) ? data : (data.games || []);
-        if (Array.isArray(gamesArray) && gamesArray.length > 0) {
+        const rawGamesArray: any[] = Array.isArray(data) ? data : (data.games || []);
+        if (Array.isArray(rawGamesArray) && rawGamesArray.length > 0) {
+          const gamesArray: Game[] = rawGamesArray.map(normalizeGame);
           localStorage.setItem(CACHE_KEY, JSON.stringify(gamesArray));
           const status: CloudStatus = {
             connected: true,
@@ -79,15 +90,16 @@ export class CloudGamesService {
     }
 
     // 3. Fallback to GAMES_LIST
+    const fallbackList = GAMES_LIST.map(normalizeGame);
     const status: CloudStatus = {
       connected: true,
       loading: false,
       lastUpdated: new Date().toISOString(),
-      totalGames: GAMES_LIST.length,
+      totalGames: fallbackList.length,
       source: 'GAMES_LIST',
     };
 
-    return { games: GAMES_LIST, status };
+    return { games: fallbackList, status };
   }
 }
 

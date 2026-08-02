@@ -340,6 +340,7 @@ export default function App() {
             onRecordScore={handleRecordScore}
             onSelectGame={handleSelectGame}
             allGames={gamesList}
+            onOpenAuthModal={() => setIsAuthModalOpen(true)}
           />
         ) : activeTab === 'landing' ? (
           <LandingPage

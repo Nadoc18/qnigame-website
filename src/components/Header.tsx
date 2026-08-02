@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { soundManager } from '../utils/audio';
+import { ShabbatInfo } from '../utils/shabbat';
+import { formatInitials } from '../utils/format';
 import { QnigameLogo } from './QnigameLogo';
 
 interface HeaderProps {
@@ -163,7 +165,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <UserCheck className={`w-3.5 h-3.5 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
               <span className="truncate max-w-[110px] sm:max-w-[150px]">
-                {user.isFirebaseUser ? (user.username || user.email?.split('@')[0] || 'מחובר') : 'התחברות'}
+                {user.isFirebaseUser ? (user.username || 'מחובר') : 'התחברות'}
               </span>
             </button>
 

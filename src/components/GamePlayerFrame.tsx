@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Game, GameComment, UserProfile } from '../types';
+import { Game, GameComment, UserProfile, getGameThumbnailUrl, getGameThumbnailBgClass } from '../types';
 import { 
   ArrowRight, 
   Maximize2, 
@@ -23,6 +23,13 @@ import {
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import confetti from 'canvas-confetti';
+import { formatInitials } from '../utils/format';
+
+import { 
+  subscribeToGameComments, 
+  addGameCommentToFirestore, 
+  likeGameCommentInFirestore 
+} from '../lib/firebase';
 
 interface GamePlayerFrameProps {
   game: Game;
@@ -32,6 +39,7 @@ interface GamePlayerFrameProps {
   onRecordScore: (gameId: string, score: number) => void;
   onSelectGame: (gameId: string) => void;
   allGames: Game[];
+  onOpenAuthModal?: () => void;
 }
 
 export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
@@ -42,6 +50,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   onRecordScore,
   onSelectGame,
   allGames,
+  onOpenAuthModal,
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -82,6 +91,19 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
       likes: 8,
     }
   ]);
+
+  // Subscribe to live Firestore comments for current game
+  useEffect(() => {
+    let unsub: () => void = () => {};
+    unsub = subscribeToGameComments(game.id, (cloudComments) => {
+      if (cloudComments && cloudComments.length > 0) {
+        setComments(cloudComments);
+      }
+    });
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [game.id]);
 
   const isFavorite = user.favoriteGameIds.includes(game.id);
 
@@ -171,27 +193,45 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
     };
   }, []);
 
-  const handleAddComment = (e: React.FormEvent) => {
+  const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
+
+    if (!user.isFirebaseUser) {
+      if (onOpenAuthModal) onOpenAuthModal();
+      return;
+    }
 
     soundManager.playCorrect();
     confetti({ particleCount: 30, spread: 60, origin: { y: 0.8 } });
 
-    const newComm: GameComment = {
-      id: Date.now().toString(),
+    const newCommData = {
       gameId: game.id,
-      userName: user.username,
+      userId: user.id,
+      userName: user.username || user.email?.split('@')[0] || 'שחקן',
       userAvatar: user.avatarIcon || '🎓',
-      userTitle: user.title,
+      userTitle: user.title || 'לומד תורה',
       rating: userRating,
       content: commentText.trim(),
       timestamp: 'עכשיו',
       likes: 0,
     };
 
-    setComments([newComm, ...comments]);
     setCommentText('');
+
+    try {
+      await addGameCommentToFirestore(newCommData);
+    } catch (err) {
+      console.error('Error saving comment to Firestore:', err);
+    }
+  };
+
+  const handleLikeComment = (comm: GameComment) => {
+    soundManager.playClick();
+    setComments((prev) =>
+      prev.map((c) => (c.id === comm.id ? { ...c, likes: c.likes + 1 } : c))
+    );
+    likeGameCommentInFirestore(comm.id, comm.likes);
   };
 
   const relatedGames = allGames.filter(g => g.id !== game.id).slice(0, 3);
@@ -321,15 +361,28 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               }
             >
 
-              {/* 1. Pure Black Cover Screen Overlay with ONLY the Hebrew שחק Button */}
+              {/* 1. Cover Screen Overlay with Optional Background Photo & ONLY the Hebrew שחק Button */}
               {gameState === 'splash' && (
-                <div className="absolute inset-0 z-30 bg-black flex flex-col items-center justify-center p-6 text-center text-white">
+                <div className="absolute inset-0 z-30 bg-black flex flex-col items-center justify-center p-6 text-center text-white overflow-hidden">
+                  {getGameThumbnailUrl(game) && (
+                    <>
+                      <img
+                        src={getGameThumbnailUrl(game)}
+                        alt={game.title}
+                        className="absolute inset-0 w-full h-full object-cover z-0 opacity-40 scale-105"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/70 z-0" />
+                    </>
+                  )}
                   <button
                     onClick={() => {
                       soundManager.playClick();
                       setGameState('intro_video');
                     }}
-                    className="group relative inline-flex items-center gap-3 px-12 py-5 rounded-2xl bg-gradient-to-r from-[#c99719] via-[#e5af24] to-[#c99719] text-[#2f4d21] font-black text-2xl sm:text-3xl shadow-[0_0_40px_rgba(245,215,127,0.6)] hover:scale-105 hover:shadow-[0_0_60px_rgba(245,215,127,0.9)] transition-all active:scale-95 cursor-pointer"
+                    className="group relative z-10 inline-flex items-center gap-3 px-12 py-5 rounded-2xl bg-gradient-to-r from-[#c99719] via-[#e5af24] to-[#c99719] text-[#2f4d21] font-black text-2xl sm:text-3xl shadow-[0_0_40px_rgba(245,215,127,0.6)] hover:scale-105 hover:shadow-[0_0_60px_rgba(245,215,127,0.9)] transition-all active:scale-95 cursor-pointer"
                   >
                     <Play className="w-9 h-9 fill-[#2f4d21]" />
                     <span>שחק</span>
@@ -434,6 +487,21 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           </div>
 
           {/* Add Comment Form */}
+          {!user.isFirebaseUser && (
+            <div className="text-xs text-amber-900 bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center justify-between font-bold shadow-sm">
+              <span>💡 להתחברות לחשבון שחקן כדי לכתוב תגובות, לדרג ולשמור ניקוד</span>
+              {onOpenAuthModal && (
+                <button
+                  type="button"
+                  onClick={onOpenAuthModal}
+                  className="text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 px-3 py-1.5 rounded-lg font-black transition-transform hover:scale-105 shadow-sm"
+                >
+                  התחברות לחשבון
+                </button>
+              )}
+            </div>
+          )}
+
           <form onSubmit={handleAddComment} className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-slate-800">הוסף תגובה ודירוג:</span>
@@ -454,7 +522,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             <textarea
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              placeholder="כתוב תגובה, טיפ למשחק או מילה טובה..."
+              placeholder={user.isFirebaseUser ? "כתוב תגובה, טיפ למשחק או מילה טובה..." : "התחבר לחשבון כדי לפרסם תגובה..."}
               rows={2}
               className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
@@ -462,10 +530,10 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-indigo-950 font-black text-sm transition-all shadow-sm"
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-indigo-950 font-black text-sm transition-all shadow-sm active:scale-95"
               >
                 <Send className="w-4 h-4" />
-                <span>פרסם תגובה</span>
+                <span>{user.isFirebaseUser ? 'פרסם תגובה' : 'התחבר לפרסום'}</span>
               </button>
             </div>
           </form>
@@ -473,14 +541,23 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           {/* Comment List */}
           <div className="space-y-4">
             {comments.map((comm) => (
-              <div key={comm.id} className="bg-slate-50/80 border border-slate-200 p-4 rounded-xl flex gap-3">
+              <div key={comm.id} className="bg-slate-50/80 border border-slate-200 p-4 rounded-xl flex gap-3 shadow-sm">
                 <div className="w-10 h-10 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-xl shrink-0 shadow-inner">
                   {comm.userAvatar}
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900">{comm.userName}</span>
+                      <span className="font-bold text-sm text-slate-900">
+                        {comm.userId === user.id || comm.userName === user.username
+                          ? comm.userName
+                          : formatInitials(comm.userName)}
+                      </span>
+                      {(comm.userId === user.id || comm.userName === user.username) && (
+                        <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full font-bold">
+                          אתה
+                        </span>
+                      )}
                       <span className="text-[10px] bg-indigo-100 border border-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full font-bold">
                         {comm.userTitle}
                       </span>
@@ -494,7 +571,18 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                     ))}
                   </div>
 
-                  <p className="text-sm text-slate-700 leading-relaxed mt-1 font-medium">{comm.content}</p>
+                  <div className="flex items-center justify-between gap-4 pt-1">
+                    <p className="text-sm text-slate-700 leading-relaxed font-medium">{comm.content}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleLikeComment(comm)}
+                      className="flex items-center gap-1 text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 font-bold transition-all shrink-0 active:scale-95"
+                      title="לייק לתגובה"
+                    >
+                      <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                      <span>{comm.likes}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -516,8 +604,18 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                 onClick={() => { soundManager.playClick(); onSelectGame(relGame.id); }}
                 className="bg-white border border-slate-200 hover:border-indigo-400 p-4 rounded-2xl cursor-pointer transition-all hover:-translate-y-1 group shadow-sm hover:shadow-md"
               >
-                <div className={`h-24 rounded-xl bg-gradient-to-br ${relGame.thumbnailBg} flex items-center justify-center mb-3 shadow-inner`}>
-                  <Play className="w-8 h-8 text-white group-hover:scale-125 transition-transform" />
+                <div className={`h-24 rounded-xl bg-gradient-to-br ${getGameThumbnailBgClass(relGame)} flex items-center justify-center mb-3 shadow-inner relative overflow-hidden`}>
+                  {getGameThumbnailUrl(relGame) && (
+                    <img
+                      src={getGameThumbnailUrl(relGame)}
+                      alt={relGame.title}
+                      className="absolute inset-0 w-full h-full object-cover z-0 transition-transform duration-500 group-hover:scale-110"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <Play className="w-8 h-8 text-white group-hover:scale-125 transition-transform relative z-10" />
                 </div>
                 <div className="text-xs text-indigo-600 font-bold mb-1">{relGame.category}</div>
                 <h4 className="font-black text-slate-900 text-sm line-clamp-1 group-hover:text-indigo-600">{relGame.title}</h4>

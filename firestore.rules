@@ -29,5 +29,13 @@ service cloud.firestore {
     match /games/{gameId} {
       allow read, write: if true;
     }
+
+    // Game comments rules: anyone can read, authenticated users can post, anyone can update likes
+    match /gameComments/{commentId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if true;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
   }
 }

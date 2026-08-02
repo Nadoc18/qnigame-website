@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserProfile, Game } from '../types';
+import { UserProfile, Game, getGameThumbnailUrl, getGameThumbnailBgClass } from '../types';
 import { 
   User, 
   Crown, 
@@ -23,7 +23,8 @@ import {
   UserCheck
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
-import { logout } from '../lib/firebase';
+import { logout, saveUserProfileToFirestore } from '../lib/firebase';
+import { formatInitials } from '../utils/format';
 
 interface AccountProfileProps {
   user: UserProfile;
@@ -34,7 +35,7 @@ interface AccountProfileProps {
   onOpenAuthModal?: () => void;
 }
 
-const AVATAR_OPTIONS = ['🎓', '👑', '🕯️', '📜', '🦁', '🌟', '🕊️', '✡️'];
+const AVATAR_OPTIONS = ['🎓', '👑', '🕯️', '📜', '🦁', '🌟', '🕊️', '✡️', '🎒', '🏆'];
 
 export const AccountProfile: React.FC<AccountProfileProps> = ({
   user,
@@ -45,7 +46,9 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
   onOpenAuthModal,
 }) => {
   const [activeTab, setActiveTab] = useState<'favorites' | 'badges' | 'history' | 'settings'>('favorites');
-  const [usernameInput, setUsernameInput] = useState(user.username);
+  const [firstNameInput, setFirstNameInput] = useState(user.firstName || '');
+  const [lastNameInput, setLastNameInput] = useState(user.lastName || '');
+  const [ageInput, setAgeInput] = useState<number>(user.age || 10);
   const [bioInput, setBioInput] = useState(user.bio || 'שוקד על דברי תורה וערכים בקניגיים.');
   const [isSaved, setIsSaved] = useState(false);
 
@@ -54,21 +57,32 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     soundManager.playCorrect();
-    setUser((prev) => ({
-      ...prev,
-      username: usernameInput,
+    const updatedUsername = `${firstNameInput.trim()} ${lastNameInput.trim()}`.trim() || user.username;
+    
+    const updatedUser: UserProfile = {
+      ...user,
+      firstName: firstNameInput.trim(),
+      lastName: lastNameInput.trim(),
+      age: Number(ageInput),
+      username: updatedUsername,
       bio: bioInput,
-    }));
+    };
+
+    setUser(updatedUser);
+    saveUserProfileToFirestore(updatedUser);
+
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2500);
   };
 
   const handleAvatarSelect = (icon: string) => {
     soundManager.playClick();
-    setUser((prev) => ({
-      ...prev,
+    const updatedUser: UserProfile = {
+      ...user,
       avatarIcon: icon,
-    }));
+    };
+    setUser(updatedUser);
+    saveUserProfileToFirestore(updatedUser);
   };
 
   return (
@@ -247,22 +261,34 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
 
           {favoriteGames.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {favoriteGames.map((game) => (
-                <div
-                  key={game.id}
-                  className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-5 space-y-3 transition-all hover:-translate-y-1 group shadow-sm hover:shadow-md"
-                >
-                  <div className={`h-28 rounded-xl bg-gradient-to-br ${game.thumbnailBg} p-3 flex items-start justify-between`}>
-                    <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-indigo-950/70 text-yellow-300">
-                      {game.category}
-                    </span>
-                    <button
-                      onClick={() => onToggleFavorite(game.id)}
-                      className="p-1.5 rounded-full bg-indigo-950/70 text-rose-400"
-                    >
-                      <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
-                    </button>
-                  </div>
+              {favoriteGames.map((game) => {
+                const imageUrl = getGameThumbnailUrl(game);
+                return (
+                  <div
+                    key={game.id}
+                    className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-5 space-y-3 transition-all hover:-translate-y-1 group shadow-sm hover:shadow-md"
+                  >
+                    <div className={`h-28 rounded-xl bg-gradient-to-br ${getGameThumbnailBgClass(game)} p-3 flex items-start justify-between relative overflow-hidden`}>
+                      {imageUrl && (
+                        <img
+                          src={imageUrl}
+                          alt={game.title}
+                          className="absolute inset-0 w-full h-full object-cover z-0 transition-transform duration-500 group-hover:scale-110"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-indigo-950/70 text-yellow-300 relative z-10">
+                        {game.category}
+                      </span>
+                      <button
+                        onClick={() => onToggleFavorite(game.id)}
+                        className="p-1.5 rounded-full bg-indigo-950/70 text-rose-400 relative z-10"
+                      >
+                        <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+                      </button>
+                    </div>
 
                   <h3 className="font-black text-slate-900 text-base group-hover:text-indigo-600">{game.title}</h3>
                   <p className="text-xs text-slate-600 line-clamp-2 font-medium">{game.description}</p>
@@ -274,7 +300,8 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
                     הפעל משחק עכשיו
                   </button>
                 </div>
-              ))}
+              );
+            })}
             </div>
           ) : (
             <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-3 shadow-sm">
@@ -401,6 +428,17 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
 
           <form onSubmit={handleSaveSettings} className="space-y-6">
             
+            {/* Privacy Badge Banner */}
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-xs text-amber-900 font-bold flex items-center justify-between gap-3 shadow-sm">
+              <div>
+                <span className="block text-sm font-black text-amber-950">🔒 שמירה על פרטיות</span>
+                <span>השמות שלך נשמרים בבטחה. בטבלת המובילים ובתגובות למשחקים יוצגו ראשי תיבות בלבד.</span>
+              </div>
+              <div className="bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl font-black text-sm border border-amber-500 shrink-0">
+                {formatInitials(user.username, firstNameInput, lastNameInput)}
+              </div>
+            </div>
+
             {/* Avatar Selector */}
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700">בחר אמוג׳י/סמל לפרופיל:</label>
@@ -422,14 +460,41 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
               </div>
             </div>
 
-            {/* Username Input */}
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">שם משתמש:</label>
+            {/* First Name & Last Name */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-slate-700">שם פרטי:</label>
+                <input
+                  type="text"
+                  value={firstNameInput}
+                  onChange={(e) => setFirstNameInput(e.target.value)}
+                  placeholder="למשל: אהרן"
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-slate-700">שם משפחה:</label>
+                <input
+                  type="text"
+                  value={lastNameInput}
+                  onChange={(e) => setLastNameInput(e.target.value)}
+                  placeholder="למשל: דוד"
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Age Input */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-slate-700">גיל השחקן:</label>
               <input
-                type="text"
-                value={usernameInput}
-                onChange={(e) => setUsernameInput(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                type="number"
+                min={4}
+                max={99}
+                value={ageInput}
+                onChange={(e) => setAgeInput(Number(e.target.value))}
+                className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium max-w-xs"
               />
             </div>
 
