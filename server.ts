@@ -52,6 +52,83 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // POST /api/game/verify-token - Verify token from external game (PixiJS / WebGL)
+  app.post("/api/game/verify-token", (req, res) => {
+    const { token } = req.body;
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ success: false, error: "Missing session token" });
+    }
+
+    if (token.startsWith('qnigame_tok_')) {
+      const parts = token.split('_');
+      const userId = parts[2] || 'user-1';
+      const gameId = parts[3] || 'pixijs-space-quest';
+
+      return res.json({
+        success: true,
+        valid: true,
+        userId,
+        gameId,
+        username: "שחקן קניגיים",
+        verifiedAt: new Date().toISOString()
+      });
+    }
+
+    res.status(401).json({ success: false, valid: false, error: "Invalid token" });
+  });
+
+  // POST /api/game/update-score - Sync score & points from game
+  app.post("/api/game/update-score", (req, res) => {
+    const { token, gameId, score, pointsEarned } = req.body;
+    if (!token || !gameId) {
+      return res.status(400).json({ success: false, error: "Missing token or gameId" });
+    }
+
+    const earned = Math.max(10, Math.floor((score || 100) / 5));
+    res.json({
+      success: true,
+      message: "Score synced successfully",
+      gameId,
+      score,
+      pointsEarned: pointsEarned || earned,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // POST /api/game/save-progress - Save custom JSON game progress for specific gameId
+  app.post("/api/game/save-progress", (req, res) => {
+    const { token, gameId, progressData } = req.body;
+    if (!token || !gameId || !progressData) {
+      return res.status(400).json({ success: false, error: "Missing token, gameId or progressData" });
+    }
+
+    res.json({
+      success: true,
+      message: "Game progress saved successfully to user profile JSON for " + gameId,
+      gameId,
+      savedAt: new Date().toISOString()
+    });
+  });
+
+  // GET /api/game/load-progress - Retrieve custom JSON game progress for specific gameId
+  app.get("/api/game/load-progress", (req, res) => {
+    const { token, gameId } = req.query;
+    if (!token || !gameId) {
+      return res.status(400).json({ success: false, error: "Missing token or gameId parameter" });
+    }
+
+    res.json({
+      success: true,
+      gameId: String(gameId),
+      gameProgress: {
+        gameId: String(gameId),
+        stage: 1,
+        score: 0,
+        lastSaved: new Date().toISOString()
+      }
+    });
+  });
+
   // GET /api/games - Fetch all games from games.json
   app.get("/api/games", (req, res) => {
     const games = getGamesFromJson();

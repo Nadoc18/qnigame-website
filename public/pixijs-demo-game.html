@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>מסע הכוכבים - PixiJS Space Quest</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+  <script src="/qnigame-sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background: #090d16;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      direction: rtl;
+    }
+    #game-container {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      height: 520px;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      border: 3px solid #f59e0b;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .hud {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .badge {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .auth-status {
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(34, 197, 94, 0.5);
+      color: #4ade80;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .controls-hint {
+      position: absolute;
+      bottom: 15px;
+      left: 15px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      z-index: 10;
+      pointer-events: auto;
+    }
+    .save-btn {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #0f172a;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 900;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    .save-btn:hover { background: #fbbf24; }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <div class="hud">
+      <div class="badge">🚀 ניקוד: <span id="score-val">0</span></div>
+      <div class="badge">📜 ספרי תורה: <span id="gems-val">0</span>/5</div>
+      <div class="badge">⭐ שלב: <span id="stage-val">1</span></div>
+    </div>
+
+    <div class="auth-status" id="auth-status-indicator">
+      <span style="width:8px; height:8px; background:#4ade80; border-radius:50%; display:inline-block;"></span>
+      <span id="auth-txt">מאמת אסימון כניסה לחשבון (Token Verified)...</span>
+    </div>
+
+    <div class="controls-hint">
+      🎮 מקשים: <b>חצים</b> להזזת החללית | 
+      <button class="save-btn" onclick="saveGameProgressNow()">💾 שמור התקדמות לחשבון</button>
+    </div>
+  </div>
+
+  <script>
+    let app, ship, stars = [], collectibles = [];
+    let score = 0, gemsCollected = 0, stage = 1;
+    let keys = {};
+    let isTokenVerified = false;
+
+    // Initialize PixiJS Application
+    function initPixi() {
+      const container = document.getElementById('game-container');
+      app = new PIXI.Application({
+        width: 800,
+        height: 520,
+        backgroundColor: 0x070a14,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true
+      });
+      container.appendChild(app.view);
+
+      // Starfield Background
+      for (let i = 0; i < 70; i++) {
+        const star = new PIXI.Graphics();
+        star.beginFill(0xffffff, Math.random() * 0.8 + 0.2);
+        star.drawCircle(0, 0, Math.random() * 2 + 1);
+        star.endFill();
+        star.x = Math.random() * 800;
+        star.y = Math.random() * 520;
+        star.speed = Math.random() * 1.5 + 0.5;
+        app.stage.addChild(star);
+        stars.push(star);
+      }
+
+      // Spaceship Graphic (Player)
+      ship = new PIXI.Graphics();
+      ship.beginFill(0x38bdf8); // Cyan body
+      ship.drawPolygon([-15, 15, 0, -20, 15, 15, 0, 8]);
+      ship.endFill();
+      ship.beginFill(0xf59e0b); // Thruster flame
+      ship.drawTriangle([-8, 15], [0, 25], [8, 15]);
+      ship.endFill();
+      ship.x = 400;
+      ship.y = 420;
+      app.stage.addChild(ship);
+
+      // Spawn Collectibles
+      spawnCollectibles();
+
+      // Keyboard Listeners
+      window.addEventListener('keydown', (e) => keys[e.code] = true);
+      window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+      // Ticker Loop
+      app.ticker.add((delta) => updateGame(delta));
+    }
+
+    function spawnCollectibles() {
+      collectibles.forEach(c => app.stage.removeChild(c));
+      collectibles = [];
+
+      for (let i = 0; i < 5; i++) {
+        const gem = new PIXI.Graphics();
+        gem.beginFill(0xf59e0b); // Gold Torah scroll / gem
+        gem.drawStar(0, 0, 5, 12, 6);
+        gem.endFill();
+        gem.x = 80 + Math.random() * 640;
+        gem.y = 60 + Math.random() * 250;
+        gem.rotSpeed = (Math.random() - 0.5) * 0.05;
+        app.stage.addChild(gem);
+        collectibles.push(gem);
+      }
+    }
+
+    function updateGame(delta) {
+      // Move Stars
+      stars.forEach(star => {
+        star.y += star.speed * delta;
+        if (star.y > 520) star.y = 0;
+      });
+
+      // Controls
+      const speed = 5;
+      if (keys['ArrowLeft'] || keys['KeyA']) ship.x = Math.max(30, ship.x - speed);
+      if (keys['ArrowRight'] || keys['KeyD']) ship.x = Math.min(770, ship.x + speed);
+      if (keys['ArrowUp'] || keys['KeyW']) ship.y = Math.max(40, ship.y - speed);
+      if (keys['ArrowDown'] || keys['KeyS']) ship.y = Math.min(480, ship.y + speed);
+
+      // Rotate Collectibles & Check Collisions
+      collectibles.forEach((gem, idx) => {
+        gem.rotation += gem.rotSpeed;
+
+        const dx = ship.x - gem.x;
+        const dy = ship.y - gem.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 25) {
+          // Collected!
+          app.stage.removeChild(gem);
+          collectibles.splice(idx, 1);
+
+          score += 150;
+          gemsCollected++;
+
+          document.getElementById('score-val').innerText = score;
+          document.getElementById('gems-val').innerText = gemsCollected;
+
+          // Sync points live to Qnigame user account via SDK
+          if (window.QnigameSDK) {
+            window.QnigameSDK.updateScore(score, 30);
+          }
+
+          if (gemsCollected >= 5) {
+            stage++;
+            gemsCollected = 0;
+            document.getElementById('stage-val').innerText = stage;
+            document.getElementById('gems-val').innerText = '0';
+            spawnCollectibles();
+
+            saveGameProgressNow();
+          }
+        }
+      });
+    }
+
+    function saveGameProgressNow() {
+      const progressState = {
+        score: score,
+        gemsCollected: gemsCollected,
+        currentStage: stage,
+        spaceshipColor: '#38bdf8',
+        lastSaved: new Date().toISOString()
+      };
+
+      if (window.QnigameSDK) {
+        window.QnigameSDK.saveProgress(progressState);
+      }
+
+      const statusTxt = document.getElementById('auth-txt');
+      if (statusTxt) {
+        statusTxt.innerText = `✅ נשמר בהצלחה לחשבון! (שלב ${stage}, ניקוד ${score})`;
+        setTimeout(() => {
+          if (statusTxt) statusTxt.innerText = `מחובר לחשבון קניגיים (אסימון מאושר ✅)`;
+        }, 2500);
+      }
+    }
+
+    // Handshake with Qnigame Web App
+    window.addEventListener('load', () => {
+      initPixi();
+
+      if (window.QnigameSDK) {
+        window.QnigameSDK.verifyToken()
+          .then((res) => {
+            isTokenVerified = true;
+            document.getElementById('auth-txt').innerText = `מחובר לחשבון: ${res.user ? res.user.username : 'משתמש מאומת'} ✅`;
+          })
+          .catch((err) => {
+            document.getElementById('auth-txt').innerText = `אסימון אורח מופעל (מצב ניסיון)`;
+          });
+
+        window.QnigameSDK.on('authConfirmed', (data) => {
+          document.getElementById('auth-txt').innerText = `מאושר כניסה לחשבון: ${data.user.username} ✅`;
+          if (data.progress) {
+            stage = data.progress.currentStage || 1;
+            score = data.progress.score || 0;
+            document.getElementById('stage-val').innerText = stage;
+            document.getElementById('score-val').innerText = score;
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

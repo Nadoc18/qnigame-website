@@ -106,6 +106,20 @@ export const getGamesFromFirestore = async (): Promise<Game[]> => {
   }
 };
 
+/**
+ * Helper to strip `undefined` values from an object before sending to Firestore,
+ * as Firestore throws an error if any field value is `undefined`.
+ */
+function cleanFirestoreData<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  Object.keys(obj).forEach((key) => {
+    if (obj[key] !== undefined) {
+      cleaned[key] = obj[key];
+    }
+  });
+  return cleaned;
+}
+
 // Helper to convert Firebase user + Firestore data to app's UserProfile
 export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitialUser?: UserProfile): Promise<UserProfile> => {
   const userRef = doc(db, 'users', firebaseUser.uid);
@@ -130,6 +144,7 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
       badges: Array.isArray(data.badges) ? data.badges : (defaultInitialUser?.badges || []),
       gameStats: data.gameStats || (defaultInitialUser?.gameStats || {}),
+      gameProgress: data.gameProgress || {},
       bio: data.bio || 'שוקד על דברי תורה וערכים בקניגיים.',
       shabbatModeEnabled: data.shabbatModeEnabled ?? false,
       soundEnabled: data.soundEnabled ?? true,
@@ -150,16 +165,19 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       favoriteGameIds: [],
       badges: defaultInitialUser?.badges || [],
       gameStats: {},
+      gameProgress: {},
       bio: 'ברוך הבא לקניגיים! שוקד על תורה וערכים.',
       shabbatModeEnabled: false,
       soundEnabled: true,
     };
 
-    await setDoc(userRef, {
+    const docData = cleanFirestoreData({
       ...newProfile,
       uid: firebaseUser.uid,
       updatedAt: new Date().toISOString()
     });
+
+    await setDoc(userRef, docData);
 
     return newProfile;
   }
@@ -173,11 +191,12 @@ export const saveUserProfileToFirestore = async (userProfile: UserProfile) => {
   }
   try {
     const userRef = doc(db, 'users', userProfile.id);
-    await setDoc(userRef, {
+    const docData = cleanFirestoreData({
       ...userProfile,
       uid: userProfile.id,
       updatedAt: new Date().toISOString()
-    }, { merge: true });
+    });
+    await setDoc(userRef, docData, { merge: true });
   } catch (error) {
     console.error('Error saving user profile to Firestore:', error);
   }
@@ -207,6 +226,7 @@ export const subscribeToUserProfile = (userId: string, callback: (profile: Parti
         favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
         badges: Array.isArray(data.badges) ? data.badges : [],
         gameStats: data.gameStats || {},
+        gameProgress: data.gameProgress || {},
         bio: data.bio || 'שוקד על דברי תורה וערכים בקניגיים.',
         shabbatModeEnabled: data.shabbatModeEnabled ?? false,
         soundEnabled: data.soundEnabled ?? true,
@@ -293,10 +313,11 @@ export const addGameCommentToFirestore = async (
 ) => {
   try {
     const commentsRef = collection(db, 'gameComments');
-    const docRef = await addDoc(commentsRef, {
+    const docData = cleanFirestoreData({
       ...commentData,
       createdAt: new Date().toISOString(),
     });
+    const docRef = await addDoc(commentsRef, docData);
     return docRef.id;
   } catch (error) {
     console.error('Error adding comment to Firestore:', error);

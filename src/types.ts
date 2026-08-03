@@ -48,6 +48,8 @@ export interface Game {
   image_url?: string;
   isPopular?: boolean;
   isNew?: boolean;
+  requiresAuth?: boolean;
+  tokenSupported?: boolean;
 }
 
 export const cleanImageUrl = (rawUrl?: string): string | undefined => {
@@ -162,6 +164,7 @@ export interface UserProfile {
   favoriteGameIds: string[];
   badges: Badge[];
   gameStats: Record<string, GameStat>;
+  gameProgress?: Record<string, any>;
   bio?: string;
   shabbatModeEnabled?: boolean;
   soundEnabled?: boolean;

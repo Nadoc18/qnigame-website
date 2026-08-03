@@ -227,6 +227,27 @@ export default function App() {
     });
   };
 
+  const handleSaveGameProgress = (gameId: string, progressData: any) => {
+    setUser((prev) => {
+      const nextUser = {
+        ...prev,
+        gameProgress: {
+          ...(prev.gameProgress || {}),
+          [gameId]: {
+            ...(progressData || {}),
+            lastSaved: new Date().toISOString()
+          }
+        }
+      };
+
+      if (prev.isFirebaseUser) {
+        saveUserProfileToFirestore(nextUser);
+      }
+
+      return nextUser;
+    });
+  };
+
   const [pendingGameId, setPendingGameId] = useState<string | null>(null);
   const [authCustomMsg, setAuthCustomMsg] = useState<string | undefined>(undefined);
 
@@ -338,6 +359,7 @@ export default function App() {
             user={user}
             onToggleFavorite={handleToggleFavorite}
             onRecordScore={handleRecordScore}
+            onSaveGameProgress={handleSaveGameProgress}
             onSelectGame={handleSelectGame}
             allGames={gamesList}
             onOpenAuthModal={() => setIsAuthModalOpen(true)}

@@ -24,6 +24,7 @@ import {
 import { soundManager } from '../utils/audio';
 import confetti from 'canvas-confetti';
 import { formatInitials } from '../utils/format';
+import { generateGameSessionToken } from '../utils/gameTokenService';
 
 import { 
   subscribeToGameComments, 
@@ -37,6 +38,7 @@ interface GamePlayerFrameProps {
   user: UserProfile;
   onToggleFavorite: (gameId: string) => void;
   onRecordScore: (gameId: string, score: number) => void;
+  onSaveGameProgress?: (gameId: string, progressData: any) => void;
   onSelectGame: (gameId: string) => void;
   allGames: Game[];
   onOpenAuthModal?: () => void;
@@ -48,6 +50,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   user,
   onToggleFavorite,
   onRecordScore,
+  onSaveGameProgress,
   onSelectGame,
   allGames,
   onOpenAuthModal,
@@ -56,6 +59,83 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [gameState, setGameState] = useState<'splash' | 'intro_video' | 'playing'>('splash');
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [key, setKey] = useState(0); // To force iframe restart
+
+  // Generate temporary session token for authenticated user
+  const gameToken = useMemo(() => {
+    if (user.isFirebaseUser) {
+      return generateGameSessionToken(user.id, game.id);
+    }
+    return null;
+  }, [user.id, user.isFirebaseUser, game.id, key]);
+
+  // Compute target iframe src URL with token parameters
+  const iframeSrc = useMemo(() => {
+    const rawUrl = game.externalUrl || game.playUrl;
+    if (!rawUrl) return undefined;
+    if (gameToken) {
+      const sep = rawUrl.includes('?') ? '&' : '?';
+      return `${rawUrl}${sep}token=${encodeURIComponent(gameToken)}&userId=${encodeURIComponent(user.id)}&gameId=${encodeURIComponent(game.id)}`;
+    }
+    return rawUrl;
+  }, [game.externalUrl, game.playUrl, gameToken, user.id, game.id]);
+
+  // PostMessage listener for token verification, live points sync, and JSON game progress save per gameId
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
+
+      const targetGameId = data.gameId || game.id;
+      const targetWin = event.source as WindowProxy;
+
+      if (data.type === 'QNIGAME_VERIFY_TOKEN') {
+        if (targetWin && targetWin.postMessage) {
+          targetWin.postMessage({
+            type: 'QNIGAME_TOKEN_VERIFIED',
+            success: true,
+            gameId: targetGameId,
+            user: {
+              id: user.id,
+              username: user.username,
+              level: user.level,
+              points: user.points,
+            },
+            // Returns the exact JSON progress stored in Firebase for THIS specific gameId
+            gameProgress: user.gameProgress?.[targetGameId] || null
+          }, '*');
+        }
+      } else if (data.type === 'QNIGAME_LOAD_PROGRESS') {
+        if (targetWin && targetWin.postMessage) {
+          targetWin.postMessage({
+            type: 'QNIGAME_PROGRESS_LOADED',
+            success: true,
+            gameId: targetGameId,
+            gameProgress: user.gameProgress?.[targetGameId] || null
+          }, '*');
+        }
+      } else if (data.type === 'QNIGAME_UPDATE_SCORE') {
+        if (data.score !== undefined) {
+          onRecordScore(targetGameId, Number(data.score));
+        }
+      } else if (data.type === 'QNIGAME_SAVE_PROGRESS') {
+        if (data.progressData && onSaveGameProgress) {
+          onSaveGameProgress(targetGameId, data.progressData);
+          if (targetWin && targetWin.postMessage) {
+            targetWin.postMessage({
+              type: 'QNIGAME_PROGRESS_SAVED',
+              success: true,
+              gameId: targetGameId,
+              savedAt: new Date().toISOString()
+            }, '*');
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [user, game.id, onRecordScore, onSaveGameProgress]);
 
   useEffect(() => {
     if (gameState === 'intro_video' && videoRef.current) {
@@ -64,7 +144,6 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
       });
     }
   }, [gameState]);
-  const [key, setKey] = useState(0); // To force iframe restart
   const [userRating, setUserRating] = useState(5);
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<GameComment[]>([
@@ -236,6 +315,13 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
   const relatedGames = allGames.filter(g => g.id !== game.id).slice(0, 3);
 
+  // Dynamic Aspect Ratio calculation strictly based on game.aspectRatio from JSON / data
+  const rawRatio = (game.aspectRatio || '').trim().replace(/\s+/g, '');
+  const isLandscapeGame = rawRatio === '16/9' || rawRatio === '16:9' || rawRatio === '4/3' || rawRatio === '4:3';
+  const formattedRatio = rawRatio
+    ? rawRatio.replace('/', ' / ').replace(':', ' / ')
+    : (game.frameWidth === '100%' ? '16 / 9' : '9 / 16');
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -340,24 +426,40 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             
             <div 
               className={`relative bg-black mx-auto overflow-hidden transition-all duration-300 ${
-                isFullscreen ? 'h-screen max-h-screen w-auto max-w-full flex items-center justify-center shadow-2xl' : 'rounded-2xl border border-indigo-900/60 shadow-2xl'
+                isFullscreen 
+                  ? (isLandscapeGame ? 'w-screen max-w-screen h-auto max-h-screen flex items-center justify-center shadow-2xl' : 'h-screen max-h-screen w-auto max-w-full flex items-center justify-center shadow-2xl')
+                  : 'rounded-2xl border border-indigo-900/60 shadow-2xl'
               }`}
               style={
                 !isFullscreen
-                  ? {
-                      width: game.frameWidth && game.frameWidth !== '100%' ? game.frameWidth : '375px',
-                      maxWidth: '100%',
-                      height: game.frameHeight && game.frameHeight !== '100%' ? game.frameHeight : undefined,
-                      maxHeight: '80vh',
-                      aspectRatio: game.aspectRatio ? game.aspectRatio.replace('/', ' / ') : '9 / 16',
-                      minHeight: (!game.frameHeight || game.frameHeight === '100%') && !game.aspectRatio ? '550px' : undefined
-                    }
-                  : {
-                      height: '100vh',
-                      maxHeight: '100vh',
-                      maxWidth: '100vw',
-                      aspectRatio: game.aspectRatio ? game.aspectRatio.replace('/', ' / ') : '9 / 16',
-                    }
+                  ? (isLandscapeGame
+                      ? {
+                          width: '100%',
+                          maxWidth: '100%',
+                          aspectRatio: formattedRatio,
+                          maxHeight: '80vh',
+                        }
+                      : {
+                          width: game.frameWidth && game.frameWidth !== '100%' ? game.frameWidth : '375px',
+                          maxWidth: '100%',
+                          height: game.frameHeight && game.frameHeight !== '100%' ? game.frameHeight : undefined,
+                          maxHeight: '80vh',
+                          aspectRatio: formattedRatio,
+                          minHeight: (!game.frameHeight || game.frameHeight === '100%') && !game.aspectRatio ? '550px' : undefined
+                        })
+                  : (isLandscapeGame
+                      ? {
+                          width: '100vw',
+                          maxWidth: '100vw',
+                          maxHeight: '100vh',
+                          aspectRatio: formattedRatio,
+                        }
+                      : {
+                          height: '100vh',
+                          maxHeight: '100vh',
+                          maxWidth: '100vw',
+                          aspectRatio: formattedRatio,
+                        })
               }
             >
 
@@ -408,11 +510,32 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                 </div>
               )}
 
-              {/* 3. The Actual Preloaded Game Iframe */}
+              {/* 3. Authentication Gate Overlay for Games Requiring an Account */}
+              {game.requiresAuth && !user.isFirebaseUser && (
+                <div className="absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center text-white space-y-4 border-2 border-amber-500/40 rounded-2xl">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-400 text-3xl shadow-lg animate-bounce">
+                    🔑
+                  </div>
+                  <div className="max-w-md space-y-2">
+                    <h3 className="text-2xl font-black text-amber-400">כניסה למשחק מותנית בהתחברות לחשבון</h3>
+                    <p className="text-sm text-slate-300">
+                      כדי לשחק במשחק זה, לאמת אסימון כניסה, לשמור את התקדמות השלבים שלך ולצבור נקודות לחשבון, יש להתחבר לחשבון קניגיים.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => onOpenAuthModal && onOpenAuthModal()}
+                    className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-lg shadow-xl hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>התחבר לחשבון עכשיו</span>
+                  </button>
+                </div>
+              )}
+
+              {/* 4. The Actual Preloaded Game Iframe */}
               <iframe
                 key={key}
                 title={game.title}
-                src={(game.externalUrl || game.playUrl) ? (game.externalUrl || game.playUrl) : undefined}
+                src={iframeSrc}
                 srcDoc={(!game.externalUrl && !game.playUrl && combinedHtml.trim()) ? combinedHtml : undefined}
                 className="w-full h-full border-none"
                 sandbox="allow-scripts allow-same-origin allow-modals allow-forms"

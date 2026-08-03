@@ -1,5 +1,38 @@
 [
   {
+    "id": "pixijs-space-quest",
+    "title": "מסע הכוכבים - PixiJS Space Quest",
+    "subtitle": "משחק ארקייד PixiJS עתידני עם אימות אסימון ושמירת שלבים בחשבון",
+    "description": "הוטס בחלל, אוסוף ספרי תורה וכוכבים מוזהבים, ואמת את אסימון הכניסה מול שרת קניגיים!",
+    "longDescription": "משחק PixiJS 8 מתקדם המציג חיבור ישיר לחשבון המשתמש בקניגיים. המשחק מקבל אסימון כניסה momentané, מאמת אותו בזמן אמת, ומסנכרן את הניקוד ואת avancement de la partie (שמירת JSON) ישירות למסד הנתונים Firebase.",
+    "category": "חשיבה ופאזל",
+    "difficulty": "לכל המשפחה",
+    "ageRating": "גילאי 6+",
+    "playCount": 5200,
+    "rating": 5.0,
+    "ratingCount": 88,
+    "author": "מפתח PixiJS Qnigame",
+    "tags": ["PixiJS", "חלל", "אימות אסימון", "שמירת שלבים", "ארקייד"],
+    "thumbnailBg": "from-[#0f172a] via-[#1e1b4b] to-[#312e81]",
+    "iconName": "Sparkles",
+    "instructions": [
+      "השתמש בחצי המקלדת (או מקשי W/A/S/D) להזזת החללית.",
+      "אסוף את ספרי התורה והכוכבים המוזהבים כדי לצבור נקודות לחשבון שלך.",
+      "לחץ על \"שמור התקדמות\" כדי לסנכרן את מצב המשחק כקובץ JSON לחשבון Firebase!"
+    ],
+    "torahSource": "תהילים פרק קמ״ז: \"מוֹנֶה מִסְפָּר לַכּוֹכָבִים לְכֻלָּם שֵׁמוֹת יִקְרָא\"",
+    "gameType": "pixijs",
+    "isPopular": true,
+    "isNew": true,
+    "requiresAuth": true,
+    "tokenSupported": true,
+    "externalUrl": "/pixijs-demo-game.html",
+    "frameWidth": "100%",
+    "frameHeight": "560px",
+    "aspectRatio": "16/9",
+    "files": []
+  },
+  {
     "id": "time-count",
     "title": "ניצול הזמן",
     "subtitle": "חידון דעת אינטראקטיבי עם מאות שאלות בדרגות קושי משתנות",

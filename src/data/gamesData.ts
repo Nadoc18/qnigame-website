@@ -33,5 +33,38 @@ export const GAMES_LIST: Game[] = [
     aspectRatio: '9/16',
     introVideoUrl: 'https://firebasestorage.googleapis.com/v0/b/molten-protocol-whnbb.firebasestorage.app/o/intro_squareHEBREW.mp4?alt=media&token=a80d8520-1de6-46a4-a8b9-df2103855845',
     files: []
+  },
+  {
+    id: 'pixijs-space-quest',
+    title: 'מסע הכוכבים - PixiJS Space Quest',
+    subtitle: 'משחק ארקייד PixiJS עתידני עם אימות אסימון ושמירת שלבים בחשבון',
+    description: 'הוטס בחלל, אוסוף ספרי תורה וכוכבים מוזהבים, ואמת את אסימון הכניסה מול שרת קניגיים!',
+    longDescription: 'משחק PixiJS 8 מתקדם המציג חיבור ישיר לחשבון המשתמש בקניגיים. המשחק מקבל אסימון כניסה momentané, מאמת אותו בזמן אמת, ומסנכרן את הניקוד ואת avancement de la partie (שמירת JSON) ישירות למסד הנתונים Firebase.',
+    category: 'חשיבה ופאזל',
+    difficulty: 'לכל המשפחה',
+    ageRating: 'גילאי 6+',
+    playCount: 5200,
+    rating: 5.0,
+    ratingCount: 88,
+    author: 'מפתח PixiJS Qnigame',
+    tags: ['PixiJS', 'חלל', 'אימות אסימון', 'שמירת שלבים', 'ארקייד'],
+    thumbnailBg: 'from-[#0f172a] via-[#1e1b4b] to-[#312e81]',
+    iconName: 'Sparkles',
+    instructions: [
+      'השתמש בחצי המקלדת (או מקשי W/A/S/D) להזזת החללית.',
+      'אסוף את ספרי התורה והכוכבים המוזהבים כדי לצבור נקודות לחשבון שלך.',
+      'לחץ על "שמור התקדמות" כדי לסנכרן את מצב המשחק כקובץ JSON לחשבון Firebase!'
+    ],
+    torahSource: 'תהילים פרק קמ״ז: "מוֹנֶה מִסְפָּר לַכּוֹכָבִים לְכֻלָּם שֵׁמוֹת יִקְרָא"',
+    gameType: 'pixijs',
+    isPopular: true,
+    isNew: true,
+    requiresAuth: true,
+    tokenSupported: true,
+    externalUrl: '/pixijs-demo-game.html',
+    frameWidth: '100%',
+    frameHeight: '560px',
+    aspectRatio: '16/9',
+    files: []
   }
 ];
