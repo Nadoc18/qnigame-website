@@ -241,6 +241,36 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
   const frameBoxRef = useRef<HTMLDivElement>(null);
 
+  // Dynamic Aspect Ratio calculation strictly based on game.aspectRatio from JSON / data
+  const rawRatio = (game.aspectRatio || '').trim().replace(/\s+/g, '');
+  const isLandscapeGame = rawRatio === '16/9' || rawRatio === '16:9' || rawRatio === '4/3' || rawRatio === '4:3';
+  const formattedRatio = rawRatio
+    ? rawRatio.replace('/', ' / ').replace(':', ' / ')
+    : (game.frameWidth === '100%' ? '16 / 9' : '9 / 16');
+
+  // Mobile Screen Orientation Lock / Unlock helpers for 16/9 Landscape games
+  const lockLandscapeOrientation = async () => {
+    try {
+      if ((screen.orientation as any)?.lock) {
+        await (screen.orientation as any).lock('landscape');
+      } else if ((screen as any).lockOrientation) {
+        (screen as any).lockOrientation('landscape');
+      }
+    } catch (err) {
+      console.warn('Screen orientation lock not supported on this device/browser:', err);
+    }
+  };
+
+  const unlockOrientation = () => {
+    try {
+      if ((screen.orientation as any)?.unlock) {
+        (screen.orientation as any).unlock();
+      } else if ((screen as any).unlockOrientation) {
+        (screen as any).unlockOrientation();
+      }
+    } catch (err) {}
+  };
+
   const handleFullscreenToggle = () => {
     soundManager.playClick();
     if (!document.fullscreenElement) {
@@ -250,6 +280,9 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
         (frameBoxRef.current as any).webkitRequestFullscreen();
       }
       setIsFullscreen(true);
+      if (isLandscapeGame) {
+        lockLandscapeOrientation();
+      }
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen().catch((err) => console.warn(err));
@@ -257,20 +290,28 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
         (document as any).webkitExitFullscreen();
       }
       setIsFullscreen(false);
+      unlockOrientation();
     }
   };
 
   useEffect(() => {
     const handleFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isFs = !!document.fullscreenElement;
+      setIsFullscreen(isFs);
+      if (!isFs) {
+        unlockOrientation();
+      } else if (isLandscapeGame) {
+        lockLandscapeOrientation();
+      }
     };
     document.addEventListener('fullscreenchange', handleFsChange);
     document.addEventListener('webkitfullscreenchange', handleFsChange);
     return () => {
       document.removeEventListener('fullscreenchange', handleFsChange);
       document.removeEventListener('webkitfullscreenchange', handleFsChange);
+      unlockOrientation();
     };
-  }, []);
+  }, [isLandscapeGame]);
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,13 +355,6 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   };
 
   const relatedGames = allGames.filter(g => g.id !== game.id).slice(0, 3);
-
-  // Dynamic Aspect Ratio calculation strictly based on game.aspectRatio from JSON / data
-  const rawRatio = (game.aspectRatio || '').trim().replace(/\s+/g, '');
-  const isLandscapeGame = rawRatio === '16/9' || rawRatio === '16:9' || rawRatio === '4/3' || rawRatio === '4:3';
-  const formattedRatio = rawRatio
-    ? rawRatio.replace('/', ' / ').replace(':', ' / ')
-    : (game.frameWidth === '100%' ? '16 / 9' : '9 / 16');
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 py-6 px-4 sm:px-6 lg:px-8">
