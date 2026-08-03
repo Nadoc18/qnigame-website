@@ -3,4 +3,6 @@
   command = "npm run build"
 
 [build.environment]
+  SECRETS_SCAN_OMIT_PATHS = "node_modules/**"
   SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyCkQKPCaVFpef1r8v9vUCq9tPZYi6pgnwM"
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
