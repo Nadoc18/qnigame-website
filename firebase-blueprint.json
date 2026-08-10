@@ -73,12 +73,32 @@
         "isNew": { "type": "boolean", "description": "Is new badge" }
       },
       "required": ["id", "title", "category"]
+    },
+    "user_game_saves": {
+      "title": "User Game Save States",
+      "description": "Generic progressData JSON save state per user and gameId",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "gameId": { "type": "string", "description": "Game ID e.g. family-tree-game" },
+        "progressData": { "type": "object", "description": "Arbitrary JSON game save state" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+      },
+      "required": ["userId", "gameId", "progressData"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/users" },
       "description": "User profiles"
+    },
+    "/users/{userId}/game_saves/{gameId}": {
+      "schema": { "$ref": "#/entities/user_game_saves" },
+      "description": "Subcollection game save states per gameId"
+    },
+    "/user_game_saves/{saveId}": {
+      "schema": { "$ref": "#/entities/user_game_saves" },
+      "description": "Standalone game save states per gameId"
     },
     "/user_game_stats/{statId}": {
       "schema": { "$ref": "#/entities/user_game_stats" },

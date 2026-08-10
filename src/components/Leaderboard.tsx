@@ -1,7 +1,8 @@
-import React from 'react';
-import { Trophy, Crown, Award, Star, Flame, Sparkles, User, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Trophy, Crown, Award, Star, Flame, Sparkles, User, ShieldCheck, Radio } from 'lucide-react';
 import { UserProfile } from '../types';
 import { formatInitials } from '../utils/format';
+import { subscribeToLeaderboard, updateLeaderboardEntry, LeaderboardEntry } from '../lib/firebase';
 
 interface LeaderboardProps {
   currentUser: UserProfile;
@@ -23,96 +24,80 @@ interface LeaderboardUser {
   isCurrentUser?: boolean;
 }
 
-const MOCK_LEADERBOARD: Omit<LeaderboardUser, 'rank'>[] = [
-  {
-    id: 'l1',
-    username: 'אהרן דוד',
-    title: 'שר התורה',
-    level: 12,
-    points: 3420,
-    playsCount: 88,
-    avatarIcon: '👑',
-    badgeCount: 8,
-  },
-  {
-    id: 'l2',
-    username: 'יונתן תורני',
-    title: 'עילוי בתורה',
-    level: 9,
-    points: 2780,
-    playsCount: 64,
-    avatarIcon: '📜',
-    badgeCount: 6,
-  },
-  {
-    id: 'l3',
-    username: 'שלמה כהן',
-    title: 'תלמיד חכם',
-    level: 8,
-    points: 2150,
-    playsCount: 52,
-    avatarIcon: '🎓',
-    badgeCount: 5,
-  },
-  {
-    id: 'l4',
-    username: 'אריאל הלוי',
-    title: 'בחור כהלכה',
-    level: 6,
-    points: 1690,
-    playsCount: 39,
-    avatarIcon: '🦁',
-    badgeCount: 4,
-  },
-  {
-    id: 'l5',
-    username: 'בנימין שרעבי',
-    title: 'בחור כהלכה',
-    level: 5,
-    points: 1240,
-    playsCount: 28,
-    avatarIcon: '🌟',
-    badgeCount: 3,
-  },
-  {
-    id: 'l6',
-    username: 'אליקים גרינברג',
-    title: 'לומד שוקד',
-    level: 4,
-    points: 890,
-    playsCount: 21,
-    avatarIcon: '🕯️',
-    badgeCount: 2,
-  },
-];
-
 export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAuthModal }) => {
+  const [firebaseEntries, setFirebaseEntries] = useState<LeaderboardEntry[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Live real-time subscription to Firebase Firestore
+    const unsubscribe = subscribeToLeaderboard((entries) => {
+      if (entries && entries.length > 0) {
+        setFirebaseEntries(entries);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLocalSync = async () => {
+    if (!currentUser.isFirebaseUser) {
+      setSyncStatus('התחבר לחשבון שחקן ב-Firebase כדי לבצע סנכרון מקומי');
+      return;
+    }
+    setIsSyncing(true);
+    setSyncStatus('מסנכרן נתוני שחקנים ב-Firebase...');
+    try {
+      await updateLeaderboardEntry(currentUser);
+      setSyncStatus('סנכרון מקומי של השחקן הושלם בהצלחה!');
+    } catch (err) {
+      setSyncStatus('שגיאה בסנכרון המקומי');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatus(null), 4000);
+    }
+  };
+
   const statsList = Object.values(currentUser.gameStats || {}) as Array<{ playsCount: number }>;
   const userPlaysCount = statsList.reduce((acc, s) => acc + (s.playsCount || 0), 0) || 15;
 
-  // Integrate current user into list only if logged in via Firebase
-  const rawList: Omit<LeaderboardUser, 'rank'>[] = [
-    ...MOCK_LEADERBOARD,
-    ...(currentUser.isFirebaseUser
-      ? [
-          {
-            id: currentUser.id,
-            username: currentUser.username,
-            firstName: currentUser.firstName,
-            lastName: currentUser.lastName,
-            title: currentUser.title || 'תלמיד חכם',
-            level: currentUser.level,
-            points: currentUser.points,
-            playsCount: userPlaysCount,
-            avatarIcon: currentUser.avatarIcon || '🎓',
-            badgeCount: currentUser.badges.filter((b) => b.unlocked).length,
-            isCurrentUser: true,
-          },
-        ]
-      : []),
-  ];
+  // Map firebase entries into LeaderboardUser list
+  const realUsersMap = new Map<string, Omit<LeaderboardUser, 'rank'>>();
 
-  const fullList: LeaderboardUser[] = rawList
+  firebaseEntries.forEach((entry) => {
+    realUsersMap.set(entry.id, {
+      id: entry.id,
+      username: entry.username,
+      firstName: entry.firstName,
+      lastName: entry.lastName,
+      title: entry.title,
+      level: entry.level,
+      points: entry.points,
+      playsCount: entry.playsCount || 0,
+      avatarIcon: entry.avatarIcon,
+      badgeCount: entry.badgeCount || 0,
+      isCurrentUser: currentUser.isFirebaseUser && entry.id === currentUser.id,
+    });
+  });
+
+  // Ensure current user is in list if logged in via Firebase
+  if (currentUser.isFirebaseUser && currentUser.id && !realUsersMap.has(currentUser.id)) {
+    realUsersMap.set(currentUser.id, {
+      id: currentUser.id,
+      username: currentUser.username,
+      firstName: currentUser.firstName,
+      lastName: currentUser.lastName,
+      title: currentUser.title || 'תלמיד חכם',
+      level: currentUser.level,
+      points: currentUser.points,
+      playsCount: userPlaysCount,
+      avatarIcon: currentUser.avatarIcon || '🎓',
+      badgeCount: currentUser.badges.filter((b) => b.unlocked).length,
+      isCurrentUser: true,
+    });
+  }
+
+  const fullList: LeaderboardUser[] = Array.from(realUsersMap.values())
     .sort((a, b) => b.points - a.points)
     .map((item, idx) => ({
       ...item,
@@ -120,10 +105,32 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
     }));
 
   const top3 = fullList.slice(0, 3);
-  const restList = fullList.slice(3);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-right" dir="rtl">
+      
+      {/* LOCAL TEST ONLY SYNC BUTTON (Never displayed in production) */}
+      {(typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) && (
+        <div className="bg-slate-900 border-2 border-amber-400/50 rounded-2xl p-4 text-amber-300 text-xs flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+          <div className="space-y-1 text-right">
+            <span className="font-black text-amber-400 flex items-center gap-1.5 text-sm">
+              <span>🛠️</span>
+              <span>כפתור בדיקה מקומית (Local Test Only - מוסתר לחלוטין בפרודקשן!)</span>
+            </span>
+            <p className="text-slate-300 text-xs">
+              לחץ כדי לסנכרן את הפרופיל והניקוד המקומי של השחקן אל collection /leaderboard ב-Firebase.
+            </p>
+            {syncStatus && <p className="text-emerald-400 font-bold mt-1">{syncStatus}</p>}
+          </div>
+          <button
+            onClick={handleLocalSync}
+            disabled={isSyncing}
+            className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow transition-all shrink-0 disabled:opacity-50"
+          >
+            {isSyncing ? 'מסנכרן...' : 'סנכרון שחקן מקומי (Test)'}
+          </button>
+        </div>
+      )}
       
       {/* Guest Notice Banner */}
       {!currentUser.isFirebaseUser && (
@@ -247,50 +254,60 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
         </div>
 
         <div className="divide-y divide-slate-100">
-          {fullList.map((user) => (
-            <div
-              key={user.id}
-              className={`px-6 py-4 grid grid-cols-12 gap-2 items-center text-sm transition-all ${
-                user.isCurrentUser
-                  ? 'bg-amber-50/90 border-r-4 border-amber-400 font-black'
-                  : 'hover:bg-slate-50'
-              }`}
-            >
-              <div className="col-span-1 text-center font-black text-slate-700">
-                #{user.rank}
-              </div>
-
-              <div className="col-span-5 sm:col-span-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-lg shrink-0">
-                  {user.avatarIcon}
+          {fullList.length === 0 ? (
+            <div className="p-10 text-center text-slate-500 space-y-3">
+              <div className="text-4xl">🏆</div>
+              <div className="font-black text-slate-800 text-base">עדיין אין שחקנים רשומים בטבלת המובילים</div>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                התחבר לחשבון שחקן ב-Firebase ושחק במשחקים כדי להיות הראשון שכובש את ראש הטבלה!
+              </p>
+            </div>
+          ) : (
+            fullList.map((user) => (
+              <div
+                key={user.id}
+                className={`px-6 py-4 grid grid-cols-12 gap-2 items-center text-sm transition-all ${
+                  user.isCurrentUser
+                    ? 'bg-amber-50/90 border-r-4 border-amber-400 font-black'
+                    : 'hover:bg-slate-50'
+                }`}
+              >
+                <div className="col-span-1 text-center font-black text-slate-700">
+                  #{user.rank}
                 </div>
-                <div>
-                  <div className="font-black text-slate-900 flex items-center gap-1.5">
-                    <span>{user.isCurrentUser ? user.username : formatInitials(user.username, user.firstName, user.lastName)}</span>
-                    {user.isCurrentUser && (
-                      <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full font-bold">
-                        אתה
-                      </span>
-                    )}
+
+                <div className="col-span-5 sm:col-span-4 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-lg shrink-0">
+                    {user.avatarIcon}
+                  </div>
+                  <div>
+                    <div className="font-black text-slate-900 flex items-center gap-1.5">
+                      <span>{user.isCurrentUser ? user.username : formatInitials(user.username, user.firstName, user.lastName)}</span>
+                      {user.isCurrentUser && (
+                        <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full font-bold">
+                          אתה
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="col-span-3 sm:col-span-3">
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-[#2f4d21] border border-emerald-200 inline-block">
-                  {user.title}
-                </span>
-              </div>
+                <div className="col-span-3 sm:col-span-3">
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-[#2f4d21] border border-emerald-200 inline-block">
+                    {user.title}
+                  </span>
+                </div>
 
-              <div className="col-span-3 sm:col-span-2 text-center font-bold text-slate-600">
-                רמה {user.level}
-              </div>
+                <div className="col-span-3 sm:col-span-2 text-center font-bold text-slate-600">
+                  רמה {user.level}
+                </div>
 
-              <div className="hidden sm:block col-span-2 text-left font-black text-[#c99719] text-base">
-                {user.points} נק׳
+                <div className="hidden sm:block col-span-2 text-left font-black text-[#c99719] text-base">
+                  {user.points} נק׳
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

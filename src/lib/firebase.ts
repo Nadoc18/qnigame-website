@@ -8,6 +8,8 @@ import {
   signOut, 
   sendPasswordResetEmail,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -22,10 +24,15 @@ import {
   query,
   where,
   orderBy,
-  serverTimestamp 
+  limit,
+  serverTimestamp,
+  runTransaction,
+  deleteDoc,
+  updateDoc
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { UserProfile, Game, GameComment } from '../types';
+import { UserProfile, Game, GameComment, NewsArticle } from '../types';
+import { getLevelDetails } from '../utils/levels';
 
 export enum OperationType {
   CREATE = 'create',
@@ -79,6 +86,9 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.warn('Firebase auth persistence setup note:', err);
+});
 export const googleProvider = new GoogleAuthProvider();
 
 // Initialize Firestore with specific database ID if configured
@@ -86,11 +96,12 @@ export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestore
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 
-// Fetch games list from Firestore (single read call)
-export const getGamesFromFirestore = async (): Promise<Game[]> => {
+export const getGamesFromFirestore = async (isAdmin: boolean = false): Promise<Game[]> => {
   const gamesPath = 'games';
   try {
-    const snap = await getDocs(collection(db, gamesPath));
+    const qBase = collection(db, gamesPath);
+    const q = isAdmin ? qBase : query(qBase, where('isAdminOnly', '==', false));
+    const snap = await getDocs(q);
     const games: Game[] = [];
     snap.forEach((d) => {
       const data = d.data() as Game;
@@ -103,6 +114,47 @@ export const getGamesFromFirestore = async (): Promise<Game[]> => {
   } catch (error) {
     console.warn('Error fetching games from Firestore:', error);
     return [];
+  }
+};
+
+// Calculate dynamic ratings from gameComments to enrich games list on load
+export const enrichGamesWithLiveRatings = async (games: Game[]): Promise<Game[]> => {
+  if (isQuotaExceeded) return games;
+  try {
+    const commentsRef = collection(db, 'gameComments');
+    const snap = await getDocs(commentsRef);
+    
+    // Group ratings by gameId
+    const ratingsData: Record<string, { totalScore: number; count: number }> = {};
+    
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const gameId = data.gameId;
+      const rating = data.rating;
+      if (gameId && typeof rating === 'number') {
+        if (!ratingsData[gameId]) {
+          ratingsData[gameId] = { totalScore: 0, count: 0 };
+        }
+        ratingsData[gameId].totalScore += rating;
+        ratingsData[gameId].count += 1;
+      }
+    });
+
+    return games.map(game => {
+      const liveData = ratingsData[game.id];
+      if (liveData && liveData.count > 0) {
+        return {
+          ...game,
+          rating: Number((liveData.totalScore / liveData.count).toFixed(1)),
+          ratingCount: liveData.count
+        };
+      }
+      return game;
+    });
+  } catch (error) {
+    checkAndHandleQuotaError(error);
+    console.warn('Error enriching games with live ratings:', error);
+    return games;
   }
 };
 
@@ -127,6 +179,9 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
 
   if (snap.exists()) {
     const data = snap.data();
+    const pts = data.points || 0;
+    const levelInfo = getLevelDetails(pts);
+    
     return {
       id: firebaseUser.uid,
       email: firebaseUser.email || undefined,
@@ -134,9 +189,9 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       firstName: data.firstName || '',
       lastName: data.lastName || '',
       age: data.age || undefined,
-      title: data.title || 'תלמיד חכם',
-      level: data.level || 1,
-      points: data.points || 0,
+      title: levelInfo.title,
+      level: levelInfo.level,
+      points: pts,
       coins: data.coins || 0,
       avatarIcon: data.avatarIcon || '🎓',
       avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
@@ -148,6 +203,7 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       bio: data.bio || 'שוקד על דברי תורה וערכים בקניגיים.',
       shabbatModeEnabled: data.shabbatModeEnabled ?? false,
       soundEnabled: data.soundEnabled ?? true,
+      isAdmin: data.isAdmin ?? false,
     };
   } else {
     // Create new profile in Firestore for first-time login
@@ -183,22 +239,66 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
   }
 };
 
-// Save User Profile to Firestore
-export const saveUserProfileToFirestore = async (userProfile: UserProfile) => {
+// Circuit breaker flag to prevent infinite failed network requests when free tier quota is hit
+let isQuotaExceeded = false;
+
+function checkAndHandleQuotaError(error: any): boolean {
+  const errMsg = error?.message || String(error);
+  if (errMsg.includes('resource-exhausted') || errMsg.includes('Quota limit exceeded') || error?.code === 'resource-exhausted') {
+    if (!isQuotaExceeded) {
+      isQuotaExceeded = true;
+      console.warn('⚠️ Firestore daily write quota exceeded. Operating in local-storage mode for remainder of session.');
+    }
+    return true;
+  }
+  return false;
+}
+
+// Debounce timer & pending profile data for profile saves
+let profileSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+let pendingProfileToSave: UserProfile | null = null;
+
+// Save User Profile to Firestore (Debounced with 2-second delay to prevent quota exhaustion)
+export const saveUserProfileToFirestore = async (userProfile: UserProfile, immediate = false) => {
   if (!userProfile.id || userProfile.id.startsWith('user-1') || userProfile.id.startsWith('guest')) {
     // Local / Guest user - don't save to cloud
     return;
   }
-  try {
-    const userRef = doc(db, 'users', userProfile.id);
-    const docData = cleanFirestoreData({
-      ...userProfile,
-      uid: userProfile.id,
-      updatedAt: new Date().toISOString()
-    });
-    await setDoc(userRef, docData, { merge: true });
-  } catch (error) {
-    console.error('Error saving user profile to Firestore:', error);
+  if (isQuotaExceeded) return;
+
+  pendingProfileToSave = userProfile;
+
+  const executeSave = async () => {
+    if (!pendingProfileToSave || isQuotaExceeded) return;
+    const profileToSave = pendingProfileToSave;
+    pendingProfileToSave = null;
+
+    try {
+      const userRef = doc(db, 'users', profileToSave.id);
+      const docData = cleanFirestoreData({
+        ...profileToSave,
+        uid: profileToSave.id,
+        updatedAt: new Date().toISOString()
+      });
+      await setDoc(userRef, docData, { merge: true });
+      updateLeaderboardEntry(profileToSave);
+    } catch (error) {
+      if (checkAndHandleQuotaError(error)) return;
+      console.error('Error saving user profile to Firestore:', error);
+    }
+  };
+
+  if (immediate) {
+    if (profileSaveTimeout) {
+      clearTimeout(profileSaveTimeout);
+      profileSaveTimeout = null;
+    }
+    await executeSave();
+  } else {
+    if (profileSaveTimeout) {
+      clearTimeout(profileSaveTimeout);
+    }
+    profileSaveTimeout = setTimeout(executeSave, 2000);
   }
 };
 
@@ -206,33 +306,43 @@ export const saveUserProfileToFirestore = async (userProfile: UserProfile) => {
 export const subscribeToUserProfile = (userId: string, callback: (profile: Partial<UserProfile>) => void) => {
   if (!userId || userId.startsWith('guest')) return () => {};
   const userRef = doc(db, 'users', userId);
-  return onSnapshot(userRef, (snap) => {
-    if (snap.exists()) {
-      const data = snap.data();
-      callback({
-        id: userId,
-        email: data.email || undefined,
-        username: data.username || 'משתמש רשום',
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
-        age: data.age || undefined,
-        title: data.title || 'תלמיד חכם',
-        level: data.level || 1,
-        points: data.points || 0,
-        coins: data.coins || 0,
-        avatarIcon: data.avatarIcon || '🎓',
-        avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
-        joinedDate: data.joinedDate || new Date().toLocaleDateString('he-IL'),
-        favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
-        badges: Array.isArray(data.badges) ? data.badges : [],
-        gameStats: data.gameStats || {},
-        gameProgress: data.gameProgress || {},
-        bio: data.bio || 'שוקד על דברי תורה וערכים בקניגיים.',
-        shabbatModeEnabled: data.shabbatModeEnabled ?? false,
-        soundEnabled: data.soundEnabled ?? true,
-      });
+  return onSnapshot(
+    userRef, 
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const pts = data.points || 0;
+        const levelInfo = getLevelDetails(pts);
+        
+        callback({
+          id: userId,
+          email: data.email || undefined,
+          username: data.username || 'משתמש רשום',
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          age: data.age || undefined,
+          title: levelInfo.title,
+          level: levelInfo.level,
+          points: pts,
+          coins: data.coins || 0,
+          avatarIcon: data.avatarIcon || '🎓',
+          avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
+          joinedDate: data.joinedDate || new Date().toLocaleDateString('he-IL'),
+          favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
+          badges: Array.isArray(data.badges) ? data.badges : [],
+          gameStats: data.gameStats || {},
+          gameProgress: data.gameProgress || {},
+          bio: data.bio || 'שוקד על דברי תורה וערכים בקניגיים.',
+          shabbatModeEnabled: data.shabbatModeEnabled ?? false,
+          soundEnabled: data.soundEnabled ?? true,
+          isAdmin: data.isAdmin ?? false,
+        });
+      }
+    },
+    (error) => {
+      checkAndHandleQuotaError(error);
     }
-  });
+  );
 };
 
 // Auth methods
@@ -291,12 +401,13 @@ export const subscribeToGameComments = (
             content: data.content || '',
             timestamp: data.timestamp || 'מקרוב',
             likes: data.likes || 0,
+            likedBy: data.likedBy || [],
           };
         });
         callback(list);
       },
       (error) => {
-        console.warn('Firestore gameComments subscription note:', error);
+        checkAndHandleQuotaError(error);
       }
     );
   } catch (err) {
@@ -306,36 +417,377 @@ export const subscribeToGameComments = (
 };
 
 /**
+ * Subscribe to news articles from Firestore
+ */
+export const subscribeToNewsArticles = (
+  isAdmin: boolean,
+  callback: (articles: NewsArticle[]) => void
+) => {
+  if (isQuotaExceeded) {
+    console.warn('News sync skipped due to quota limits.');
+    return () => {};
+  }
+  
+  try {
+    const newsRef = collection(db, 'newsArticles');
+    const q = isAdmin 
+      ? query(newsRef, orderBy('createdAt', 'desc'))
+      : query(newsRef, where('isAdminOnly', '==', false), orderBy('createdAt', 'desc'));
+    
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list: NewsArticle[] = snap.docs.map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            title: data.title || '',
+            excerpt: data.excerpt || '',
+            content: data.content || '',
+            date: data.date || '',
+            author: data.author || 'מערכת משחקי קודש',
+            category: data.category || 'עדכוני משחקים',
+            readTime: data.readTime || '3 דק׳',
+            imageUrl: data.imageUrl,
+            mediaType: data.mediaType,
+            mediaUrl: data.mediaUrl,
+            linkUrl: data.linkUrl,
+            likes: data.likes || 0,
+            likedBy: data.likedBy || [],
+            commentsCount: data.commentsCount || 0,
+            tags: data.tags || [],
+          };
+        });
+        callback(list);
+      },
+      (error) => {
+        checkAndHandleQuotaError(error);
+      }
+    );
+  } catch (err) {
+    console.error('Error setting up news snapshot:', err);
+    return () => {};
+  }
+};
+
+/**
+ * Toggle like for a news article
+ */
+export const toggleNewsArticleLike = async (articleId: string, userId: string) => {
+  if (!articleId || !userId || isQuotaExceeded) return;
+  try {
+    const articleRef = doc(db, 'newsArticles', articleId);
+    
+    // Run a transaction to safely increment/decrement
+    await runTransaction(db, async (transaction) => {
+      const articleDoc = await transaction.get(articleRef);
+      if (!articleDoc.exists()) {
+        throw new Error("Article does not exist!");
+      }
+      
+      const data = articleDoc.data();
+      const likedBy: string[] = data.likedBy || [];
+      const hasLiked = likedBy.includes(userId);
+      
+      const newLikedBy = hasLiked 
+        ? likedBy.filter(id => id !== userId) 
+        : [...likedBy, userId];
+        
+      const newLikes = hasLiked ? Math.max(0, (data.likes || 1) - 1) : (data.likes || 0) + 1;
+      
+      transaction.update(articleRef, {
+        likedBy: newLikedBy,
+        likes: newLikes
+      });
+    });
+  } catch (error) {
+    if (checkAndHandleQuotaError(error)) return;
+    console.error('Error toggling news article like:', error);
+  }
+};
+
+/**
+ * Admin: Create a new news article
+ */
+export const createNewsArticle = async (articleData: Partial<NewsArticle>) => {
+  if (isQuotaExceeded) throw new Error("Quota exceeded");
+  const newsRef = collection(db, 'newsArticles');
+  const docRef = doc(newsRef);
+  const newArticle = {
+    ...articleData,
+    id: docRef.id,
+    createdAt: new Date().toISOString(),
+    likes: 0,
+    likedBy: [],
+    commentsCount: 0,
+  };
+  await setDoc(docRef, newArticle);
+  return newArticle;
+};
+
+/**
+ * Admin: Update a news article
+ */
+export const updateNewsArticle = async (articleId: string, articleData: Partial<NewsArticle>) => {
+  if (!articleId || isQuotaExceeded) throw new Error("Invalid ID or Quota exceeded");
+  const articleRef = doc(db, 'newsArticles', articleId);
+  const cleanData = Object.fromEntries(Object.entries(articleData).filter(([_, v]) => v !== undefined));
+  await updateDoc(articleRef, cleanData);
+};
+
+/**
+ * Admin: Delete a news article
+ */
+export const deleteNewsArticle = async (articleId: string) => {
+  if (!articleId || isQuotaExceeded) throw new Error("Invalid ID or Quota exceeded");
+  const articleRef = doc(db, 'newsArticles', articleId);
+  await deleteDoc(articleRef);
+};
+
+
+/**
  * Add a new comment for a game to Firestore
  */
 export const addGameCommentToFirestore = async (
   commentData: Omit<GameComment, 'id'>
 ) => {
+  if (isQuotaExceeded) {
+    console.warn('Comment creation skipped due to quota limits.');
+    return 'local-comment-id';
+  }
   try {
     const commentsRef = collection(db, 'gameComments');
     const docData = cleanFirestoreData({
       ...commentData,
       createdAt: new Date().toISOString(),
     });
-    const docRef = await addDoc(commentsRef, docData);
-    return docRef.id;
+
+    const q = query(
+      commentsRef,
+      where('gameId', '==', commentData.gameId),
+      where('userId', '==', commentData.userId)
+    );
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const existingDoc = snap.docs[0];
+      await setDoc(existingDoc.ref, docData, { merge: true });
+      return existingDoc.id;
+    } else {
+      const docRef = await addDoc(commentsRef, docData);
+      return docRef.id;
+    }
   } catch (error) {
+    if (checkAndHandleQuotaError(error)) {
+      return 'local-comment-id';
+    }
     console.error('Error adding comment to Firestore:', error);
     throw error;
   }
 };
 
 /**
- * Increment likes count for a comment in Firestore
+ * Increment likes count for a comment in Firestore (only once per user)
  */
 export const likeGameCommentInFirestore = async (
   commentId: string,
-  currentLikes: number
+  userId: string
 ) => {
+  if (isQuotaExceeded || !userId) return;
   try {
     const commentRef = doc(db, 'gameComments', commentId);
-    await setDoc(commentRef, { likes: currentLikes + 1 }, { merge: true });
+    const snap = await getDoc(commentRef);
+    if (!snap.exists()) return;
+    
+    const data = snap.data();
+    const likedBy: string[] = data.likedBy || [];
+    
+    if (!likedBy.includes(userId)) {
+      likedBy.push(userId);
+      await setDoc(commentRef, { 
+        likes: (data.likes || 0) + 1,
+        likedBy: likedBy
+      }, { merge: true });
+    }
   } catch (error) {
+    if (checkAndHandleQuotaError(error)) return;
     console.error('Error updating comment likes in Firestore:', error);
   }
 };
+
+// ==========================================
+// GENERIC GAME PROGRESS SAVE STATE FIRESTORE
+// ==========================================
+
+let progressSaveTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
+
+/**
+ * Save generic progressData JSON for a given userId and gameId in Firestore
+ * (Debounced & optimized to single doc write)
+ */
+export const saveGameProgressToFirestore = async (
+  userId: string,
+  gameId: string,
+  progressData: any
+) => {
+  if (!userId || userId.startsWith('guest') || !gameId) return;
+  if (isQuotaExceeded) return;
+
+  const saveKey = `${userId}_${gameId}`;
+  if (progressSaveTimeouts[saveKey]) {
+    clearTimeout(progressSaveTimeouts[saveKey]);
+  }
+
+  progressSaveTimeouts[saveKey] = setTimeout(async () => {
+    delete progressSaveTimeouts[saveKey];
+    if (isQuotaExceeded) return;
+
+    try {
+      const updatedAt = new Date().toISOString();
+      const serializedProgress = typeof progressData === 'object' ? JSON.stringify(progressData) : progressData;
+
+      // 1 consolidated write under /users/{userId}/game_saves/{gameId}
+      const saveRef = doc(db, 'users', userId, 'game_saves', gameId);
+      await setDoc(saveRef, {
+        userId,
+        gameId,
+        progressData: serializedProgress,
+        updatedAt,
+      }, { merge: true });
+    } catch (error) {
+      if (checkAndHandleQuotaError(error)) return;
+      console.error(`Error saving game progress for gameId=${gameId}:`, error);
+    }
+  }, 2000);
+};
+
+/**
+ * Get generic progressData JSON for a given userId and gameId from Firestore
+ */
+export const getGameProgressFromFirestore = async (
+  userId: string,
+  gameId: string
+): Promise<any> => {
+  if (!userId || userId.startsWith('guest') || !gameId) return null;
+
+  try {
+    const saveRef = doc(db, 'users', userId, 'game_saves', gameId);
+    const snap = await getDoc(saveRef);
+    if (snap.exists()) {
+      return snap.data().progressData || null;
+    }
+
+    const standaloneRef = doc(db, 'user_game_saves', `${userId}_${gameId}`);
+    const standaloneSnap = await getDoc(standaloneRef);
+    if (standaloneSnap.exists()) {
+      return standaloneSnap.data().progressData || null;
+    }
+
+    return null;
+  } catch (error) {
+    if (checkAndHandleQuotaError(error)) return null;
+    console.error(`Error loading game progress for gameId=${gameId}:`, error);
+    return null;
+  }
+};
+
+// ==========================================
+// PUBLIC LEADERBOARD FIRESTORE INTEGRATION
+// ==========================================
+
+export interface LeaderboardEntry {
+  id: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  title: string;
+  level: number;
+  points: number;
+  avatarIcon: string;
+  badgeCount: number;
+  playsCount: number;
+  updatedAt?: string;
+}
+
+/**
+  * Update public leaderboard entry for user in Firestore (/leaderboard/{userId})
+  */
+export const updateLeaderboardEntry = async (userProfile: UserProfile) => {
+  if (!userProfile.id || userProfile.id.startsWith('user-1') || userProfile.id.startsWith('guest')) {
+    return;
+  }
+  if (isQuotaExceeded) return;
+
+  try {
+    const leaderboardRef = doc(db, 'leaderboard', userProfile.id);
+    const badgeCount = Array.isArray(userProfile.badges)
+      ? userProfile.badges.filter(b => b.unlocked).length
+      : 0;
+    const playsCount = userProfile.gameStats
+      ? Object.values(userProfile.gameStats as Record<string, { playsCount: number }>).reduce((acc, s) => acc + (s.playsCount || 0), 0)
+      : 0;
+
+    const levelInfo = getLevelDetails(userProfile.points || 0);
+
+    const entryData = cleanFirestoreData({
+      id: userProfile.id,
+      userId: userProfile.id,
+      username: userProfile.username || 'שחקן',
+      firstName: userProfile.firstName || '',
+      lastName: userProfile.lastName || '',
+      title: levelInfo.title,
+      level: levelInfo.level,
+      points: userProfile.points || 0,
+      avatarIcon: userProfile.avatarIcon || '🎓',
+      badgeCount,
+      playsCount,
+      updatedAt: new Date().toISOString()
+    });
+    await setDoc(leaderboardRef, entryData, { merge: true });
+  } catch (error) {
+    if (checkAndHandleQuotaError(error)) return;
+    console.error('Error updating leaderboard entry in Firestore:', error);
+  }
+};
+
+/**
+  * Subscribe to live leaderboard collection sorted by points in Firestore
+  */
+export const subscribeToLeaderboard = (
+  callback: (entries: LeaderboardEntry[]) => void,
+  limitCount = 50
+) => {
+  try {
+    const leaderboardRef = collection(db, 'leaderboard');
+    const q = query(leaderboardRef, orderBy('points', 'desc'), limit(limitCount));
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list: LeaderboardEntry[] = snap.docs.map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            username: data.username || 'שחקן',
+            firstName: data.firstName || '',
+            lastName: data.lastName || '',
+            title: data.title || 'תלמיד חכם',
+            level: data.level || 1,
+            points: data.points || 0,
+            avatarIcon: data.avatarIcon || '🎓',
+            badgeCount: data.badgeCount || 0,
+            playsCount: data.playsCount || 0,
+            updatedAt: data.updatedAt
+          };
+        });
+        callback(list);
+      },
+      (error) => {
+        checkAndHandleQuotaError(error);
+      }
+    );
+  } catch (err) {
+    console.error('Error setting up leaderboard snapshot:', err);
+    return () => {};
+  }
+};
+

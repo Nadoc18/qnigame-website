@@ -22,6 +22,20 @@ import {
 import { soundManager } from '../utils/audio';
 import { LogoShowcaseCard } from './QnigameLogo';
 
+const isYouTube = (url: string) => url && (url.includes('youtube.com') || url.includes('youtu.be'));
+
+const getYouTubeEmbedUrl = (url: string) => {
+  const id = getYouTubeId(url);
+  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : url;
+};
+
+const getYouTubeId = (url: string) => {
+  if (!url) return '';
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : '';
+};
+
 interface LandingPageProps {
   games: Game[];
   news: NewsArticle[];
@@ -146,7 +160,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="lg:col-span-5 space-y-6">
             <LogoShowcaseCard />
 
-            <div className="relative group bg-white/95 border-2 border-[#c99719] hover:border-[#e5af24] p-5 rounded-3xl shadow-2xl transition-all">
+            <div className="relative group bg-white/95 border-2 border-[#c99719] hover:border-[#e5af24] p-5 rounded-3xl shadow-2xl transition-all overflow-hidden">
+              {featuredGame.isNew && (
+                <div className="absolute top-6 -right-12 w-44 text-center z-20 bg-rose-500 text-white text-base font-black py-2 shadow-lg transform rotate-45 border-y border-rose-400 pointer-events-none">
+                  חדש
+                </div>
+              )}
               <div className="absolute top-4 left-4 z-10 bg-[#c99719] text-[#2f4d21] text-xs font-black px-3 py-1 rounded-full shadow-md">
                 🔥 משחק השבוע
               </div>
@@ -258,6 +277,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 key={game.id}
                 className="group relative bg-white border border-slate-200 hover:border-[#2fab65] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between"
               >
+                {game.isNew && (
+                  <div className="absolute top-5 -right-12 w-40 text-center z-20 bg-rose-500 text-white text-sm font-black py-1.5 shadow-lg transform rotate-45 border-y border-rose-400 pointer-events-none">
+                    חדש
+                  </div>
+                )}
                 <div>
                   {/* Thumbnail */}
                   <div className={`h-40 bg-gradient-to-br ${getGameThumbnailBgClass(game)} p-4 flex flex-col justify-between relative overflow-hidden`}>
@@ -384,26 +408,54 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div
                 key={item.id}
                 onClick={() => { soundManager.playClick(); onOpenNews(item.id); }}
-                className="bg-white border border-slate-200 hover:border-[#2fab65] p-5 rounded-2xl space-y-3 cursor-pointer transition-all hover:-translate-y-1 group shadow-sm hover:shadow-md"
+                className="bg-white border border-slate-200 hover:border-[#2fab65] rounded-2xl cursor-pointer transition-all hover:-translate-y-1 group shadow-sm hover:shadow-md overflow-hidden flex flex-col"
               >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="bg-emerald-50 text-[#2f4d21] border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
-                    {item.category}
-                  </span>
-                  <span className="text-slate-400 font-medium">{item.date}</span>
-                </div>
+                {/* Thumbnail */}
+                {(item.mediaType === 'image' || item.imageUrl) && (item.mediaUrl || item.imageUrl) && (
+                  <div className="w-full h-32 bg-slate-100 overflow-hidden relative">
+                    <img src={item.mediaUrl || item.imageUrl} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                  </div>
+                )}
+                {item.mediaType === 'video' && item.mediaUrl && (
+                  <div className="w-full h-32 bg-slate-900 relative flex items-center justify-center overflow-hidden">
+                    {(isYouTube(item.mediaUrl) || item.imageUrl) ? (
+                      <img 
+                        src={isYouTube(item.mediaUrl) ? `https://img.youtube.com/vi/${getYouTubeId(item.mediaUrl)}/mqdefault.jpg` : item.imageUrl} 
+                        alt="Video Thumbnail" 
+                        className="w-full h-full object-cover opacity-60 transition-transform group-hover:scale-105" 
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-800 flex items-center justify-center opacity-80" />
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-[#2fab65] transition-colors">
+                        <Play className="w-4 h-4 text-white ml-1" />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-                <h3 className="font-black text-slate-900 text-base group-hover:text-[#2fab65] transition-colors line-clamp-2">
-                  {item.title}
-                </h3>
+                <div className="p-5 space-y-3 flex flex-col flex-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="bg-emerald-50 text-[#2f4d21] border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
+                      {item.category}
+                    </span>
+                    <span className="text-slate-400 font-medium">{item.date}</span>
+                  </div>
 
-                <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed font-medium">
-                  {item.excerpt}
-                </p>
+                  <h3 className="font-black text-slate-900 text-base group-hover:text-[#2fab65] transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold">
-                  <span>מאת: {item.author}</span>
-                  <span className="text-[#2fab65] font-bold group-hover:underline">קרא כתבה ➔</span>
+                  <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed font-medium flex-1">
+                    {item.excerpt}
+                  </p>
+
+                  <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold">
+                    <span>מאת: {item.author}</span>
+                    <span className="text-[#2fab65] font-bold group-hover:underline">קרא כתבה ➔</span>
+                  </div>
                 </div>
               </div>
             ))}

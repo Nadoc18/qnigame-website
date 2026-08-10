@@ -1,21 +1,35 @@
 import React, { useState } from 'react';
 import { NewsArticle } from '../types';
-import { Newspaper, ThumbsUp, MessageSquare, Calendar, User, Clock, ArrowRight, X, Sparkles, Tag } from 'lucide-react';
+import { Newspaper, ThumbsUp, MessageSquare, Calendar, User, Clock, ArrowRight, X, Sparkles, Tag, Play, ExternalLink } from 'lucide-react';
 import { soundManager } from '../utils/audio';
+import { UserProfile } from '../types';
+import { toggleNewsArticleLike } from '../lib/firebase';
+
+const isYouTube = (url: string) => url && (url.includes('youtube.com') || url.includes('youtu.be'));
+
+const getYouTubeId = (url: string) => {
+  if (!url) return '';
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : '';
+};
+
+const getYouTubeEmbedUrl = (url: string) => {
+  const id = getYouTubeId(url);
+  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : url;
+};
 
 interface NewsPageProps {
   articles: NewsArticle[];
   selectedArticleId?: string;
+  user?: UserProfile;
+  onOpenAuthModal?: () => void;
 }
 
-export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId }) => {
+export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId, user, onOpenAuthModal }) => {
   const [activeCategory, setActiveCategory] = useState<string>('הכל');
-  const [readingArticle, setReadingArticle] = useState<NewsArticle | null>(
-    selectedArticleId ? articles.find(a => a.id === selectedArticleId) || null : null
-  );
-  const [likesMap, setLikesMap] = useState<Record<string, number>>(
-    articles.reduce((acc, a) => ({ ...acc, [a.id]: a.likes }), {})
-  );
+  const [readingArticleId, setReadingArticleId] = useState<string | null>(selectedArticleId || null);
+  const readingArticle = articles.find(a => a.id === readingArticleId) || null;
 
   const categories = ['הכל', 'עדכוני משחקים', 'טור השבוע', 'הלכה וטכנולוגיה'];
 
@@ -24,10 +38,11 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId 
   const handleLike = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     soundManager.playClick();
-    setLikesMap(prev => ({
-      ...prev,
-      [id]: (prev[id] || 0) + 1
-    }));
+    if (!user || !user.isFirebaseUser) {
+      if (onOpenAuthModal) onOpenAuthModal();
+      return;
+    }
+    toggleNewsArticleLike(id, user.id);
   };
 
   return (
@@ -69,10 +84,37 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId 
         {filtered.map((item) => (
           <article
             key={item.id}
-            onClick={() => { soundManager.playClick(); setReadingArticle(item); }}
-            className="bg-white border border-slate-200 hover:border-[#2fab65] p-6 rounded-2xl flex flex-col justify-between cursor-pointer transition-all hover:-translate-y-1 group space-y-4 shadow-sm hover:shadow-md"
+            onClick={() => { soundManager.playClick(); setReadingArticleId(item.id); }}
+            className="bg-white border border-slate-200 hover:border-[#2fab65] rounded-2xl flex flex-col cursor-pointer transition-all hover:-translate-y-1 group shadow-sm hover:shadow-md overflow-hidden"
           >
-            <div className="space-y-3">
+            {/* Thumbnail for grid if image or video */}
+            {(item.mediaType === 'image' || item.imageUrl) && (item.mediaUrl || item.imageUrl) && (
+              <div className="w-full h-40 bg-slate-100 overflow-hidden relative">
+                <img src={item.mediaUrl || item.imageUrl} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+              </div>
+            )}
+            {item.mediaType === 'video' && item.mediaUrl && (
+              <div className="w-full h-40 bg-slate-900 relative flex items-center justify-center overflow-hidden">
+                {(isYouTube(item.mediaUrl) || item.imageUrl) ? (
+                  <img 
+                    src={isYouTube(item.mediaUrl) ? `https://img.youtube.com/vi/${getYouTubeId(item.mediaUrl)}/mqdefault.jpg` : item.imageUrl} 
+                    alt="Video Thumbnail" 
+                    className="w-full h-full object-cover opacity-60 transition-transform group-hover:scale-105" 
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+                  />
+                ) : (
+                  <div className="w-full h-full bg-slate-800 flex items-center justify-center opacity-80" />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-[#2fab65] transition-colors">
+                    <Play className="w-5 h-5 text-white ml-1" />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="p-6 flex flex-col justify-between flex-1 space-y-4">
+              <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="bg-emerald-50 text-[#2f4d21] border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
                   {item.category}
@@ -101,12 +143,13 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId 
               <div className="flex items-center gap-3">
                 <button
                   onClick={(e) => handleLike(item.id, e)}
-                  className="flex items-center gap-1 text-slate-400 hover:text-[#c99719] transition-colors"
+                  className={`flex items-center gap-1 transition-colors ${item.likedBy?.includes(user?.id || '') ? 'text-[#c99719]' : 'text-slate-400 hover:text-[#c99719]'}`}
                 >
-                  <ThumbsUp className="w-3.5 h-3.5" />
-                  <span>{likesMap[item.id] || 0}</span>
+                  <ThumbsUp className={`w-3.5 h-3.5 ${item.likedBy?.includes(user?.id || '') ? 'fill-[#c99719]' : ''}`} />
+                  <span>{item.likes || 0}</span>
                 </button>
               </div>
+            </div>
             </div>
           </article>
         ))}
@@ -135,7 +178,7 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId 
               </div>
 
               <button
-                onClick={() => setReadingArticle(null)}
+                onClick={() => setReadingArticleId(null)}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-all"
               >
                 <X className="w-5 h-5" />
@@ -143,14 +186,57 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId 
             </div>
 
             {/* Modal Article Content */}
-            <div className="p-6 overflow-y-auto space-y-4 text-slate-700 text-sm leading-relaxed whitespace-pre-line">
-              <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200/80 text-amber-900 italic font-semibold">
+            <div className="p-6 overflow-y-auto space-y-6 text-slate-700 text-sm leading-relaxed whitespace-pre-line">
+              
+              {/* Media Section */}
+              {(readingArticle.mediaType === 'image' || readingArticle.imageUrl) && (readingArticle.mediaUrl || readingArticle.imageUrl) && (
+                <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm max-h-[400px] flex items-center justify-center bg-slate-50">
+                  <img src={readingArticle.mediaUrl || readingArticle.imageUrl} alt={readingArticle.title} className="max-w-full max-h-[400px] object-contain" />
+                </div>
+              )}
+
+              {readingArticle.mediaType === 'video' && readingArticle.mediaUrl && (
+                <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm aspect-video bg-black flex items-center justify-center">
+                  {readingArticle.mediaUrl.toLowerCase().endsWith('.mp4') ? (
+                    <video 
+                      src={readingArticle.mediaUrl} 
+                      controls 
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <iframe 
+                      src={isYouTube(readingArticle.mediaUrl) ? getYouTubeEmbedUrl(readingArticle.mediaUrl) : readingArticle.mediaUrl} 
+                      title="Video player" 
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                      allowFullScreen 
+                    />
+                  )}
+                </div>
+              )}
+
+              <div className="bg-amber-50/80 p-5 rounded-2xl border border-amber-200/80 text-amber-900 italic font-semibold text-base leading-relaxed">
                 "{readingArticle.excerpt}"
               </div>
 
-              <div className="leading-loose text-slate-700 font-medium">
+              <div className="leading-loose text-slate-700 font-medium text-base">
                 {readingArticle.content}
               </div>
+
+              {/* Link Section */}
+              {readingArticle.mediaType === 'link' && readingArticle.linkUrl && (
+                <div className="pt-4 flex justify-center">
+                  <a 
+                    href={readingArticle.linkUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#2fab65] hover:bg-[#269053] text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-1"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                    <span>לחץ כאן למעבר לקישור המלא</span>
+                  </a>
+                </div>
+              )}
 
               {/* Tags */}
               <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-100">
@@ -166,14 +252,18 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId 
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
               <button
                 onClick={(e) => handleLike(readingArticle.id, e)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#c99719]/15 border border-[#c99719]/40 text-[#8c670d] text-xs font-bold hover:bg-[#c99719]/25 transition-all shadow-sm"
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm ${
+                  readingArticle.likedBy?.includes(user?.id || '') 
+                    ? 'bg-[#c99719]/20 border-[#c99719]/60 text-[#a37812]' 
+                    : 'bg-[#c99719]/15 border-[#c99719]/40 text-[#8c670d] hover:bg-[#c99719]/25'
+                }`}
               >
-                <ThumbsUp className="w-4 h-4" />
-                <span>לייק לכתבה ({likesMap[readingArticle.id] || 0})</span>
+                <ThumbsUp className={`w-4 h-4 ${readingArticle.likedBy?.includes(user?.id || '') ? 'fill-[#c99719]' : ''}`} />
+                <span>לייק לכתבה ({readingArticle.likes || 0})</span>
               </button>
 
               <button
-                onClick={() => setReadingArticle(null)}
+                onClick={() => setReadingArticleId(null)}
                 className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition-all"
               >
                 סגור

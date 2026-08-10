@@ -52,6 +52,74 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // GET /api/leaderboard - Public JSON endpoint returning sorted player scores for ALL registered users
+  app.get("/api/leaderboard", async (req, res) => {
+    try {
+      const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+      if (!fs.existsSync(configPath)) {
+        return res.status(500).json({ error: "Firebase configuration missing" });
+      }
+
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      const projectId = config.projectId;
+      const dbId = config.firestoreDatabaseId || '(default)';
+
+      // Query Firestore REST API for all documents in 'users' collection (with fallback to 'leaderboard')
+      let firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users`;
+      let response = await fetch(firestoreUrl);
+
+      if (!response.ok) {
+        // Fallback to 'leaderboard' collection if 'users' REST query is restricted
+        firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/leaderboard`;
+        response = await fetch(firestoreUrl);
+      }
+
+      if (!response.ok) {
+        return res.json([]);
+      }
+
+      const data = await response.json();
+      const documents = data.documents || [];
+
+      const leaderboard = documents.map((docItem: any) => {
+        const fields = docItem.fields || {};
+        const pathParts = (docItem.name || '').split('/');
+        const id = pathParts[pathParts.length - 1];
+
+        // Extract badge count if array exists
+        const badgesArray = fields.badges?.arrayValue?.values || [];
+        const badgeCount = Array.isArray(badgesArray)
+          ? badgesArray.filter((b: any) => b.mapValue?.fields?.unlocked?.booleanValue).length
+          : parseInt(fields.badgeCount?.integerValue || fields.badgeCount?.doubleValue || '0', 10);
+
+        const points = parseInt(fields.points?.integerValue || fields.points?.doubleValue || '0', 10);
+        const level = parseInt(fields.level?.integerValue || fields.level?.doubleValue || '1', 10);
+
+        return {
+          id,
+          username: fields.username?.stringValue || 'שחקן',
+          firstName: fields.firstName?.stringValue || '',
+          lastName: fields.lastName?.stringValue || '',
+          title: fields.title?.stringValue || 'בחור כהלכה',
+          level,
+          points,
+          avatarIcon: fields.avatarIcon?.stringValue || '🎓',
+          badgeCount,
+          playsCount: parseInt(fields.playsCount?.integerValue || fields.playsCount?.doubleValue || '0', 10),
+        };
+      });
+
+      // Sort descending by points
+      leaderboard.sort((a: any, b: any) => b.points - a.points);
+
+      res.setHeader('Content-Type', 'application/json');
+      res.json(leaderboard);
+    } catch (err: any) {
+      console.error('Error fetching /api/leaderboard JSON:', err);
+      res.status(500).json({ error: "Failed to load leaderboard JSON", details: err?.message });
+    }
+  });
+
   // POST /api/game/verify-token - Verify token from external game (PixiJS / WebGL)
   app.post("/api/game/verify-token", (req, res) => {
     const { token } = req.body;

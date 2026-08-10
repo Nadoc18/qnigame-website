@@ -91,6 +91,25 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
       if (data.type === 'QNIGAME_VERIFY_TOKEN') {
         if (targetWin && targetWin.postMessage) {
+          let currentSave = user.gameProgress?.[targetGameId] || null;
+          if (typeof currentSave === 'string') {
+            try { currentSave = JSON.parse(currentSave); } catch(e) {}
+          }
+
+          // Standard QNIGAME_AUTH_CONFIRMED response with generic progress object
+          targetWin.postMessage({
+            type: 'QNIGAME_AUTH_CONFIRMED',
+            user: {
+              id: user.id,
+              username: user.username,
+              level: user.level,
+              points: user.points,
+            },
+            progress: currentSave,
+            gameId: targetGameId,
+          }, '*');
+
+          // Backward-compatibility QNIGAME_TOKEN_VERIFIED response
           targetWin.postMessage({
             type: 'QNIGAME_TOKEN_VERIFIED',
             success: true,
@@ -101,17 +120,22 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               level: user.level,
               points: user.points,
             },
-            // Returns the exact JSON progress stored in Firebase for THIS specific gameId
-            gameProgress: user.gameProgress?.[targetGameId] || null
+            progress: currentSave,
+            gameProgress: currentSave,
           }, '*');
         }
       } else if (data.type === 'QNIGAME_LOAD_PROGRESS') {
         if (targetWin && targetWin.postMessage) {
+          let currentSave = user.gameProgress?.[targetGameId] || null;
+          if (typeof currentSave === 'string') {
+            try { currentSave = JSON.parse(currentSave); } catch(e) {}
+          }
           targetWin.postMessage({
             type: 'QNIGAME_PROGRESS_LOADED',
             success: true,
             gameId: targetGameId,
-            gameProgress: user.gameProgress?.[targetGameId] || null
+            progress: currentSave,
+            gameProgress: currentSave,
           }, '*');
         }
       } else if (data.type === 'QNIGAME_UPDATE_SCORE') {
@@ -119,8 +143,9 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           onRecordScore(targetGameId, Number(data.score));
         }
       } else if (data.type === 'QNIGAME_SAVE_PROGRESS') {
-        if (data.progressData && onSaveGameProgress) {
-          onSaveGameProgress(targetGameId, data.progressData);
+        const rawProgress = data.progressData !== undefined ? data.progressData : data.progress;
+        if (rawProgress !== undefined && onSaveGameProgress) {
+          onSaveGameProgress(targetGameId, rawProgress);
           if (targetWin && targetWin.postMessage) {
             targetWin.postMessage({
               type: 'QNIGAME_PROGRESS_SAVED',
@@ -137,45 +162,16 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
     return () => window.removeEventListener('message', handleMessage);
   }, [user, game.id, onRecordScore, onSaveGameProgress]);
 
-  useEffect(() => {
-    if (gameState === 'intro_video' && videoRef.current) {
-      videoRef.current.play().catch((err) => {
-        console.error("AutoPlay failed, attempting unmuted/click play:", err);
-      });
-    }
-  }, [gameState]);
+
   const [userRating, setUserRating] = useState(5);
   const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState<GameComment[]>([
-    {
-      id: 'c1',
-      gameId: game.id,
-      userName: 'יונתן ת.',
-      userAvatar: '👑',
-      userTitle: 'תלמיד חכם',
-      rating: 5,
-      content: 'משחק נפלא ומחכים! למדתי המון על הברכות והלכות השבת.',
-      timestamp: 'לפני יומיים',
-      likes: 14,
-    },
-    {
-      id: 'c2',
-      gameId: game.id,
-      userName: 'דניאל כ.',
-      userAvatar: '🌟',
-      userTitle: 'עילוי בתורה',
-      rating: 5,
-      content: 'משחק מצוין ומחכים! נהנינו מכל רגע עם החברים.',
-      timestamp: 'אתמול',
-      likes: 8,
-    }
-  ]);
+  const [comments, setComments] = useState<GameComment[]>([]);
 
   // Subscribe to live Firestore comments for current game
   useEffect(() => {
     let unsub: () => void = () => {};
     unsub = subscribeToGameComments(game.id, (cloudComments) => {
-      if (cloudComments && cloudComments.length > 0) {
+      if (cloudComments) {
         setComments(cloudComments);
       }
     });
@@ -183,6 +179,12 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
       if (unsub) unsub();
     };
   }, [game.id]);
+
+  // Calculate dynamic rating from database comments
+  const dynamicRatingCount = comments.length;
+  const dynamicRating = comments.length > 0
+    ? (comments.reduce((sum, c) => sum + c.rating, 0) / comments.length).toFixed(1)
+    : "0.0";
 
   const isFavorite = user.favoriteGameIds.includes(game.id);
 
@@ -347,11 +349,17 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   };
 
   const handleLikeComment = (comm: GameComment) => {
+    if (!user.isFirebaseUser) {
+      if (onOpenAuthModal) onOpenAuthModal();
+      return;
+    }
+    if (comm.likedBy && comm.likedBy.includes(user.id)) return;
+    
     soundManager.playClick();
     setComments((prev) =>
-      prev.map((c) => (c.id === comm.id ? { ...c, likes: c.likes + 1 } : c))
+      prev.map((c) => (c.id === comm.id ? { ...c, likes: c.likes + 1, likedBy: [...(c.likedBy || []), user.id] } : c))
     );
-    likeGameCommentInFirestore(comm.id, comm.likes);
+    likeGameCommentInFirestore(comm.id, user.id);
   };
 
   const relatedGames = allGames.filter(g => g.id !== game.id).slice(0, 3);
@@ -499,7 +507,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
               {/* 1. Cover Screen Overlay with Optional Background Photo & ONLY the Hebrew שחק Button */}
               {gameState === 'splash' && (
-                <div className="absolute inset-0 z-30 bg-black flex flex-col items-center justify-center p-6 text-center text-white overflow-hidden">
+                <div className="absolute inset-0 z-40 bg-black flex flex-col items-center justify-center p-6 text-center text-white overflow-hidden">
                   {getGameThumbnailUrl(game) && (
                     <>
                       <img
@@ -516,6 +524,15 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                   <button
                     onClick={() => {
                       soundManager.playClick();
+                      if (videoRef.current) {
+                        const isIOS = typeof window !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+                        if (!isIOS) {
+                          videoRef.current.muted = false;
+                        } else {
+                          videoRef.current.muted = true;
+                        }
+                        videoRef.current.play().catch(err => console.error("Play failed:", err));
+                      }
                       setGameState('intro_video');
                     }}
                     className="group relative z-10 inline-flex items-center gap-3 px-12 py-5 rounded-2xl bg-gradient-to-r from-[#c99719] via-[#e5af24] to-[#c99719] text-[#2f4d21] font-black text-2xl sm:text-3xl shadow-[0_0_40px_rgba(245,215,127,0.6)] hover:scale-105 hover:shadow-[0_0_60px_rgba(245,215,127,0.9)] transition-all active:scale-95 cursor-pointer"
@@ -526,14 +543,15 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                 </div>
               )}
 
-              {/* 2. Mandatory Intro Video Player Overlay */}
-              {gameState === 'intro_video' && (
+              {/* 2. Mandatory Intro Video Player Overlay (Always mounted during splash for iOS synchronous play) */}
+              {gameState !== 'playing' && (
                 <div className="absolute inset-0 z-30 bg-black flex flex-col items-center justify-center overflow-hidden">
                   <video
                     ref={videoRef}
                     src={game.introVideoUrl || 'https://firebasestorage.googleapis.com/v0/b/molten-protocol-whnbb.firebasestorage.app/o/intro_squareHEBREW.mp4?alt=media&token=a80d8520-1de6-46a4-a8b9-df2103855845'}
-                    autoPlay
                     playsInline
+                    preload="auto"
+                    muted
                     controls={false}
                     onEnded={() => setGameState('playing')}
                     onError={(e) => {
@@ -573,6 +591,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                 srcDoc={(!game.externalUrl && !game.playUrl && combinedHtml.trim()) ? combinedHtml : undefined}
                 className="w-full h-full border-none"
                 sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
+                allow="autoplay; fullscreen"
               />
 
             </div>
@@ -587,7 +606,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               </div>
               <div className="flex items-center gap-1 text-yellow-300 font-black">
                 <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                <span>{game.rating} ({game.ratingCount} דירוגים)</span>
+                <span>{dynamicRating} ({dynamicRatingCount} דירוגים)</span>
               </div>
             </div>
           )}
@@ -659,44 +678,8 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             </div>
           )}
 
-          <form onSubmit={handleAddComment} className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-slate-800">הוסף תגובה ודירוג:</span>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setUserRating(star)}
-                    className="p-1 text-amber-400 hover:scale-110 transition-transform"
-                  >
-                    <Star className={`w-5 h-5 ${star <= userRating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <textarea
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder={user.isFirebaseUser ? "כתוב תגובה, טיפ למשחק או מילה טובה..." : "התחבר לחשבון כדי לפרסם תגובה..."}
-              rows={2}
-              className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-indigo-950 font-black text-sm transition-all shadow-sm active:scale-95"
-              >
-                <Send className="w-4 h-4" />
-                <span>{user.isFirebaseUser ? 'פרסם תגובה' : 'התחבר לפרסום'}</span>
-              </button>
-            </div>
-          </form>
-
           {/* Comment List */}
-          <div className="space-y-4">
+          <div className="space-y-4 mb-8">
             {comments.map((comm) => (
               <div key={comm.id} className="bg-slate-50/80 border border-slate-200 p-4 rounded-xl flex gap-3 shadow-sm">
                 <div className="w-10 h-10 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-xl shrink-0 shadow-inner">
@@ -732,18 +715,90 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                     <p className="text-sm text-slate-700 leading-relaxed font-medium">{comm.content}</p>
                     <button
                       type="button"
+                      disabled={comm.likedBy?.includes(user.id)}
                       onClick={() => handleLikeComment(comm)}
-                      className="flex items-center gap-1 text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 font-bold transition-all shrink-0 active:scale-95"
-                      title="לייק לתגובה"
+                      className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border font-bold transition-all shrink-0 ${
+                        comm.likedBy?.includes(user.id)
+                          ? 'bg-rose-100 border-rose-300 text-rose-800 opacity-80 cursor-default'
+                          : 'text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border-rose-200 active:scale-95'
+                      }`}
+                      title={comm.likedBy?.includes(user.id) ? "כבר אהבת את התגובה" : "לייק לתגובה"}
                     >
-                      <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                      <Heart className={`w-3.5 h-3.5 ${comm.likedBy?.includes(user.id) ? 'fill-rose-600 text-rose-600' : 'fill-rose-500 text-rose-500'}`} />
                       <span>{comm.likes}</span>
                     </button>
                   </div>
                 </div>
               </div>
             ))}
+            
+            {comments.length === 0 && (
+              <div className="text-center py-6 text-slate-500 text-sm font-medium">
+                אין עדיין תגובות למשחק זה. היה הראשון להגיב!
+              </div>
+            )}
           </div>
+
+          {/* Add Comment Form */}
+          <form onSubmit={handleAddComment} className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-slate-800">הוסף/החלף תגובה ודירוג:</span>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setUserRating(star)}
+                    className="p-1 text-amber-400 hover:scale-110 transition-transform"
+                  >
+                    <Star className={`w-5 h-5 ${star <= userRating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                "משחק מצוין ומחכים! 💡",
+                "נהניתי מאוד לשחק 🤩",
+                "ממליץ בחום לכולם 👍",
+                "כיף גדול ולמדתי המון 📚",
+                "לא אהבתי 😕",
+                "לא הבנתי בכלל את המשחק 🤷‍♂️",
+                "משחק קשה מדי 😓",
+                "כדאי לשפר את ההוראות 📝"
+              ].map((text) => (
+                <button
+                  key={text}
+                  type="button"
+                  disabled={!user.isFirebaseUser}
+                  onClick={() => setCommentText(text)}
+                  className={`text-right px-4 py-3 rounded-xl border text-sm font-bold transition-all ${
+                    commentText === text
+                      ? 'bg-indigo-100 border-indigo-500 text-indigo-900 shadow-sm ring-2 ring-indigo-500/20'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/50'
+                  } ${!user.isFirebaseUser ? 'opacity-50 cursor-not-allowed grayscale' : 'active:scale-[0.98]'}`}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={!commentText.trim() || !user.isFirebaseUser}
+                className={`flex items-center gap-2 px-5 py-2 rounded-xl font-black text-sm transition-all shadow-sm ${
+                  !commentText.trim() || !user.isFirebaseUser
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-yellow-400 hover:bg-yellow-300 text-indigo-950 active:scale-95'
+                }`}
+              >
+                <Send className="w-4 h-4" />
+                <span>{user.isFirebaseUser ? 'פרסם תגובה' : 'התחבר לפרסום'}</span>
+              </button>
+            </div>
+          </form>
 
         </div>
 

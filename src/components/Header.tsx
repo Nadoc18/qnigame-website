@@ -9,7 +9,8 @@ import {
   VolumeX, 
   Search, 
   UserCheck,
-  Trophy
+  Trophy,
+  ShieldCheck
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { soundManager } from '../utils/audio';
@@ -18,8 +19,8 @@ import { formatInitials } from '../utils/format';
 import { QnigameLogo } from './QnigameLogo';
 
 interface HeaderProps {
-  activeTab: 'landing' | 'news' | 'leaderboard' | 'account';
-  setActiveTab: (tab: 'landing' | 'news' | 'leaderboard' | 'account') => void;
+  activeTab: 'landing' | 'news' | 'leaderboard' | 'account' | 'admin-secret-qni-8x7a9';
+  setActiveTab: (tab: 'landing' | 'news' | 'leaderboard' | 'account' | 'admin-secret-qni-8x7a9') => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   user: UserProfile;
@@ -146,6 +147,21 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
+            {/* Admin Tab - Only when user is logged in AND is admin */}
+            {user.isAdmin && (
+              <button
+                onClick={() => { setActiveTab('admin-secret-qni-8x7a9'); soundManager.playClick(); }}
+                className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 ${
+                  activeTab === 'admin-secret-qni-8x7a9'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_0_18px_rgba(147,51,234,0.45)] scale-105 border border-purple-400'
+                    : 'text-purple-300 hover:text-white hover:bg-white/10 border border-transparent'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span className="hidden sm:inline">ניהול</span>
+              </button>
+            )}
+
             {/* Account Login / Status Button */}
             <button
               onClick={() => {
@@ -156,7 +172,7 @@ export const Header: React.FC<HeaderProps> = ({
                 }
                 soundManager.playClick();
               }}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all border ${
+              className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all border ${
                 user.isFirebaseUser
                   ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 hover:bg-emerald-500/30'
                   : 'bg-amber-500/20 border-amber-400/50 text-amber-300 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,194,66,0.2)]'
@@ -200,15 +216,37 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
         </div>
 
-        {/* Mobile Search Bar */}
-        <div className="md:hidden pb-3.5">
+        {/* Mobile Search Bar & Login Badge */}
+        <div className="md:hidden pb-3.5 flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (user.isFirebaseUser) {
+                setActiveTab('account');
+              } else if (onOpenAuthModal) {
+                onOpenAuthModal();
+              }
+              soundManager.playClick();
+            }}
+            className={`flex shrink-0 items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all border ${
+              user.isFirebaseUser
+                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 hover:bg-emerald-500/30'
+                : 'bg-amber-500/20 border-amber-400/50 text-amber-300 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,194,66,0.2)]'
+            }`}
+            title={user.isFirebaseUser ? `מחובר בתור ${user.username || user.email}` : 'לחץ להתחברות לחשבון'}
+          >
+            <UserCheck className={`w-3.5 h-3.5 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
+            <span className="truncate max-w-[90px]">
+              {user.isFirebaseUser ? (user.username || 'מחובר') : 'התחברות'}
+            </span>
+          </button>
+
           <div className="relative w-full">
             <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="🔍 חפש משחק, נושא או פרשה..."
+              placeholder="🔍 חפש משחק..."
               className="w-full pl-4 pr-10 py-2.5 rounded-2xl bg-black/35 border border-emerald-500/30 text-sm text-white placeholder-emerald-200/50 focus:outline-none focus:ring-2 focus:ring-[#f5c242] backdrop-blur-md"
             />
           </div>

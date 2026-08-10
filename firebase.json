@@ -1,0 +1,6 @@
+{
+  "firestore": {
+    "database": "ai-studio-qnigamewebsite-80296036-0101-4abf-bef1-bab86a55c1d4",
+    "rules": "firestore.rules"
+  }
+}

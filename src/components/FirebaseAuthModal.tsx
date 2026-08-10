@@ -20,7 +20,8 @@ import {
   loginWithGoogle, 
   logout, 
   resetPassword,
-  saveUserProfileToFirestore
+  saveUserProfileToFirestore,
+  syncUserProfile
 } from '../lib/firebase';
 import { soundManager } from '../utils/audio';
 import { UserProfile } from '../types';
@@ -49,6 +50,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   // Onboarding profile fields
   const [firstName, setFirstName] = useState('');
@@ -60,11 +62,22 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (isOpen && currentUser.isFirebaseUser && (!currentUser.firstName || !currentUser.lastName)) {
+      setIsOnboarding(true);
+      setFirstName(currentUser.firstName || '');
+      setLastName(currentUser.lastName || '');
+      setAge(currentUser.age || 10);
+      setSelectedAvatar(currentUser.avatarIcon || '🎓');
+    }
+  }, [isOpen, currentUser.isFirebaseUser, currentUser.firstName, currentUser.lastName, currentUser.age, currentUser.avatarIcon]);
+
   if (!isOpen) return null;
 
   const resetForm = () => {
     setEmail('');
     setPassword('');
+    setConfirmPassword('');
     setFirstName('');
     setLastName('');
     setSelectedAvatar('🎓');
@@ -90,11 +103,14 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
           if (onAuthSuccess) onAuthSuccess();
         }, 1200);
       } else if (mode === 'register') {
-        if (!email || !password) {
+        if (!email || !password || !confirmPassword) {
           throw new Error('אנא מלא את כל השדות.');
         }
         if (password.length < 6) {
           throw new Error('הסיסמה חייבת להכיל לפחות 6 תווים.');
+        }
+        if (password !== confirmPassword) {
+          throw new Error('הסיסמאות אינן תואמות. אנא ודא שהסיסמאות זהות.');
         }
         await registerWithEmail(email, password);
         soundManager.playCorrect();
@@ -118,6 +134,8 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
         message = 'הסיסמה חלשה מדי. נדרשים לפחות 6 תווים.';
       } else if (err.code === 'auth/invalid-email') {
         message = 'כתובת האימייל אינה תקינה.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        message = 'התחברות באימייל וסיסמה אינה מופעלת ב-Firebase (יש להפעיל Email/Password ב-Firebase Console).';
       } else if (err.message) {
         message = err.message;
       }
@@ -173,13 +191,22 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
     setSuccessMsg(null);
     setLoading(true);
     try {
-      await loginWithGoogle();
+      const cred = await loginWithGoogle();
       soundManager.playCorrect();
-      setSuccessMsg('התחברת בהצלחה באמצעות גוגל!');
-      setTimeout(() => {
-        onClose();
-        if (onAuthSuccess) onAuthSuccess();
-      }, 1200);
+      
+      if (cred && cred.user) {
+        const syncedProfile = await syncUserProfile(cred.user);
+        if (!syncedProfile.firstName || !syncedProfile.lastName) {
+          setIsOnboarding(true);
+          setSuccessMsg('נא להשלים את פרטי השחקן שלך (שם, שם משפחה וגיל)');
+        } else {
+          setSuccessMsg('התחברת בהצלחה! הישגייך נשמרו בחשבונך.');
+          setTimeout(() => {
+            onClose();
+            if (onAuthSuccess) onAuthSuccess();
+          }, 1200);
+        }
+      }
     } catch (err: any) {
       soundManager.playWrong();
       console.error('Google Login Error:', err);
@@ -447,6 +474,23 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 dir-ltr font-mono"
+                  />
+                </div>
+              )}
+
+              {mode === 'register' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>אישור סיסמה (אימות)</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
                     className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 dir-ltr font-mono"
                   />

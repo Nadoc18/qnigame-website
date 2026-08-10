@@ -50,6 +50,7 @@ export interface Game {
   isNew?: boolean;
   requiresAuth?: boolean;
   tokenSupported?: boolean;
+  isAdminOnly?: boolean;
 }
 
 export const cleanImageUrl = (rawUrl?: string): string | undefined => {
@@ -168,6 +169,7 @@ export interface UserProfile {
   bio?: string;
   shabbatModeEnabled?: boolean;
   soundEnabled?: boolean;
+  isAdmin?: boolean;
 }
 
 export interface NewsArticle {
@@ -179,10 +181,15 @@ export interface NewsArticle {
   author: string;
   category: 'עדכוני משחקים' | 'טור השבוע' | 'אירועים ותחרויות' | 'הלכה וטכנולוגיה';
   readTime: string;
-  imageUrl?: string;
+  imageUrl?: string; // legacy support
+  mediaType?: 'image' | 'video' | 'link' | 'none';
+  mediaUrl?: string;
+  linkUrl?: string;
   likes: number;
+  likedBy?: string[];
   commentsCount: number;
   tags: string[];
+  isAdminOnly?: boolean;
 }
 
 export interface GameComment {
@@ -196,4 +203,6 @@ export interface GameComment {
   content: string;
   timestamp: string;
   likes: number;
+  likedBy?: string[];
 }
+

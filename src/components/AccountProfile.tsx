@@ -25,6 +25,7 @@ import {
 import { soundManager } from '../utils/audio';
 import { logout, saveUserProfileToFirestore } from '../lib/firebase';
 import { formatInitials } from '../utils/format';
+import { getLevelDetails } from '../utils/levels';
 
 interface AccountProfileProps {
   user: UserProfile;
@@ -171,18 +172,31 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
             <p className="text-xs text-emerald-100 max-w-lg font-medium">{user.bio}</p>
 
             {/* Level Progress Bar */}
-            <div className="space-y-1.5 pt-2 max-w-md">
-              <div className="flex justify-between text-xs text-emerald-200 font-bold">
-                <span>התקדמות לדרגה הבאה ("חכם הרזים")</span>
-                <span className="text-yellow-400">{user.points} / 1000 נק׳</span>
-              </div>
-              <div className="w-full h-3 bg-indigo-950 rounded-full border border-indigo-800 overflow-hidden">
-                <div
-                  className="h-full bg-yellow-400 transition-all duration-500"
-                  style={{ width: `${Math.min(100, (user.points / 1000) * 100)}%` }}
-                />
-              </div>
-            </div>
+            {(() => {
+              const levelInfo = getLevelDetails(user.points);
+              return (
+                <div className="space-y-1.5 pt-2 max-w-md">
+                  <div className="flex justify-between text-xs text-emerald-200 font-bold">
+                    <span>
+                      {levelInfo.nextTarget
+                        ? `התקדמות לדרגה הבאה ("${levelInfo.nextTitle}")`
+                        : 'הדרגה הגבוהה ביותר 👑'}
+                    </span>
+                    <span className="text-yellow-400">
+                      {levelInfo.nextTarget
+                        ? `${user.points} / ${levelInfo.nextTarget} נק׳`
+                        : `${user.points} נק׳ (מקסימום)`}
+                    </span>
+                  </div>
+                  <div className="w-full h-3 bg-indigo-950 rounded-full border border-indigo-800 overflow-hidden">
+                    <div
+                      className="h-full bg-yellow-400 transition-all duration-500"
+                      style={{ width: `${levelInfo.progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Points & Stats Pill */}

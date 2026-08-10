@@ -1,6 +1,6 @@
 import { Game, getGameThumbnailUrl } from '../types';
 import { GAMES_LIST } from '../data/gamesData';
-import { getGamesFromFirestore } from '../lib/firebase';
+import { getGamesFromFirestore, enrichGamesWithLiveRatings } from '../lib/firebase';
 
 const normalizeGame = (game: any): Game => {
   const thumb = getGameThumbnailUrl(game);
@@ -35,7 +35,7 @@ export class CloudGamesService {
     return CloudGamesService.instance;
   }
 
-  public async fetchGamesFromCloud(): Promise<{ games: Game[]; status: CloudStatus }> {
+  public async fetchGamesFromCloud(isAdmin: boolean = false): Promise<{ games: Game[]; status: CloudStatus }> {
     // Purge old cache to ensure fresh list from Firebase
     try {
       localStorage.removeItem(CACHE_KEY);
@@ -44,9 +44,10 @@ export class CloudGamesService {
 
     // 1. Try Firebase Firestore DB
     try {
-      const rawGamesList = await getGamesFromFirestore();
+      const rawGamesList = await getGamesFromFirestore(isAdmin);
       if (rawGamesList && Array.isArray(rawGamesList) && rawGamesList.length > 0) {
-        const gamesList = rawGamesList.map(normalizeGame);
+        let gamesList = rawGamesList.map(normalizeGame);
+        gamesList = await enrichGamesWithLiveRatings(gamesList);
         localStorage.setItem(CACHE_KEY, JSON.stringify(gamesList));
         const status: CloudStatus = {
           connected: true,
@@ -72,7 +73,8 @@ export class CloudGamesService {
         const data = await jsonRes.json();
         const rawGamesArray: any[] = Array.isArray(data) ? data : (data.games || []);
         if (Array.isArray(rawGamesArray) && rawGamesArray.length > 0) {
-          const gamesArray: Game[] = rawGamesArray.map(normalizeGame);
+          let gamesArray: Game[] = rawGamesArray.filter(g => isAdmin || !g.isAdminOnly).map(normalizeGame);
+          gamesArray = await enrichGamesWithLiveRatings(gamesArray);
           localStorage.setItem(CACHE_KEY, JSON.stringify(gamesArray));
           const status: CloudStatus = {
             connected: true,
@@ -90,7 +92,8 @@ export class CloudGamesService {
     }
 
     // 3. Fallback to GAMES_LIST
-    const fallbackList = GAMES_LIST.map(normalizeGame);
+    let fallbackList = GAMES_LIST.filter(g => isAdmin || !g.isAdminOnly).map(normalizeGame);
+    fallbackList = await enrichGamesWithLiveRatings(fallbackList);
     const status: CloudStatus = {
       connected: true,
       loading: false,

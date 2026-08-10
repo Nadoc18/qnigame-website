@@ -18,6 +18,8 @@ export const NEWS_ARTICLES: NewsArticle[] = [
     author: 'צוות הפורטל',
     category: 'עדכוני משחקים',
     readTime: '3 דק׳',
+    mediaType: 'video',
+    mediaUrl: 'https://www.youtube.com/shorts/RKA8hui6190',
     likes: 124,
     commentsCount: 18,
     tags: ['השקה', 'משחקים יהודיים', 'חינוך'],

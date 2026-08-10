@@ -67,13 +67,23 @@ export const QnigameLogo: React.FC<LogoProps> = ({
       className={`inline-flex items-center justify-center select-none bg-white px-3 py-1 rounded-2xl shadow-md border-2 border-amber-300 hover:border-amber-400 hover:shadow-lg transition-all hover:scale-105 ${onClick ? 'cursor-pointer' : ''} ${className}`}
     >
       {!hasError ? (
-        <img 
-          src={imgSrc} 
-          alt="קניגיים Qnigame - זה יצרת לשחק בו" 
-          className="h-full w-auto object-contain filter drop-shadow-sm"
-          referrerPolicy="no-referrer"
-          onError={handleError}
-        />
+        <>
+          {/* Full Logo (Desktop) */}
+          <img 
+            src={imgSrc} 
+            alt="קניגיים Qnigame - זה יצרת לשחק בו" 
+            className="hidden sm:block h-full w-auto object-contain filter drop-shadow-sm"
+            referrerPolicy="no-referrer"
+            onError={handleError}
+          />
+          {/* Compact Icon (Mobile) */}
+          <img 
+            src="/favicon.png" 
+            alt="קניגיים Qnigame Icon" 
+            className="block sm:hidden h-full w-auto object-contain filter drop-shadow-sm"
+            referrerPolicy="no-referrer"
+          />
+        </>
       ) : (
         <div className="flex items-center gap-2 text-emerald-900 font-black text-lg px-1">
           <Gamepad2 className="w-6 h-6 text-amber-500 animate-pulse" />

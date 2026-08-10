@@ -133,9 +133,13 @@ export async function getShabbatTimes(): Promise<ShabbatInfo> {
       isShabbat = checkIsShabbatFallback(now);
     }
 
-    const formatTime = (d: Date | null, fallback: string) => {
-      if (!d) return fallback;
-      return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    const extractTimeString = (item: any, fallback: string) => {
+      if (!item || !item.date) return fallback;
+      const parts = item.date.split('T');
+      if (parts.length > 1) {
+        return parts[1].substring(0, 5); // e.g., "19:18"
+      }
+      return fallback;
     };
 
     let rawCity = data.location?.title || data.location?.city || (isIsraelTZ ? 'ירושלים' : 'ישראל');
@@ -150,8 +154,8 @@ export async function getShabbatTimes(): Promise<ShabbatInfo> {
     return {
       isShabbat,
       parasha,
-      candleLightingStr: formatTime(candleLightingDate, '19:18'),
-      havdalahStr: formatTime(havdalahDate, '20:22'),
+      candleLightingStr: extractTimeString(candleItem, '19:18'),
+      havdalahStr: extractTimeString(havdalahItem, '20:22'),
       candleLightingDate,
       havdalahDate,
       locationName: hebrewCity,

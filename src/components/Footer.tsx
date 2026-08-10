@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Heart, Shield, Star, Award, Sparkles, BookOpen } from 'lucide-react';
+import { Flame, Heart, Shield, Star, Award, Sparkles, BookOpen, Mail } from 'lucide-react';
 import { QnigameLogo } from './QnigameLogo';
 import { ShabbatInfo } from '../utils/shabbat';
 
@@ -93,6 +93,28 @@ export const Footer: React.FC<FooterProps> = ({ shabbatInfo }) => {
           </div>
         </div>
 
+      </div>
+
+      {/* Contact Banner */}
+      <div className="max-w-7xl mx-auto mb-8 bg-black/40 border border-emerald-500/20 p-6 rounded-2xl backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10 hover:border-[#2fab65]/50 transition-colors">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-[#2fab65]/20 rounded-full flex items-center justify-center border border-[#2fab65]/40 shrink-0">
+            <Mail className="w-6 h-6 text-[#2fab65]" />
+          </div>
+          <div>
+            <h3 className="text-[#f5c242] font-black text-sm sm:text-base">צרו קשר</h3>
+            <p className="text-emerald-100/80 text-xs sm:text-sm font-medium mt-1">
+              לשאלות, דיווח על באגים, בקשות מיוחדות או סתם לפרגן לנו!
+            </p>
+          </div>
+        </div>
+        <a 
+          href="mailto:info@qnigame.com" 
+          className="px-6 py-3 bg-[#2fab65] hover:bg-[#269053] text-white text-sm font-bold rounded-xl transition-all shadow-lg flex items-center gap-2 shrink-0 hover:-translate-y-1"
+        >
+          <Mail className="w-4 h-4" />
+          <span>info@qnigame.com</span>
+        </a>
       </div>
 
       <div className="max-w-7xl mx-auto pt-6 border-t border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between text-xs text-emerald-300/80 gap-4 font-bold relative z-10">
