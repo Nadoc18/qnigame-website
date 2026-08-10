@@ -18,6 +18,7 @@ import {
   Crown,
   ChevronRight,
   Zap,
+  Lock,
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import { LogoShowcaseCard } from './QnigameLogo';
@@ -187,8 +188,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               <div className="space-y-1.5 text-right">
-                <div className="text-[11px] text-[#2fab65] font-black uppercase tracking-wide">
-                  {featuredGame.category}
+                <div className="flex items-center gap-2">
+                  <div className="text-[11px] text-[#2fab65] font-black uppercase tracking-wide">
+                    {featuredGame.category}
+                  </div>
+                  {featuredGame.isAdminOnly && (
+                    <span title="סודי (גלוי רק למנהל)" className="text-[11px] bg-slate-100 text-slate-600 px-2 rounded-full font-bold border border-slate-200 flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      סודי
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-lg font-black text-slate-900 group-hover:text-[#2fab65] transition-colors">
                   {featuredGame.title}
@@ -296,10 +305,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       />
                     )}
                     <div className="flex items-center justify-between relative z-10">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[11px] font-black px-3 py-1 rounded-full bg-[#2f4d21]/80 backdrop-blur-md text-[#f5d77f] border border-[#c99719]/40">
                           {game.category}
                         </span>
+                        {game.isAdminOnly && (
+                          <span title="סודי (גלוי רק למנהל)" className="text-[11px] font-black px-3 py-1 rounded-full bg-slate-800/80 backdrop-blur-md text-white border border-slate-600 flex items-center gap-1">
+                            <Lock className="w-3 h-3" />
+                            סודי
+                          </span>
+                        )}
                       </div>
 
                       <button

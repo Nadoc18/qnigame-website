@@ -453,9 +453,9 @@ export const subscribeToNewsArticles = (
             mediaUrl: data.mediaUrl,
             linkUrl: data.linkUrl,
             likes: data.likes || 0,
-            likedBy: data.likedBy || [],
             commentsCount: data.commentsCount || 0,
             tags: data.tags || [],
+            isAdminOnly: data.isAdminOnly || false,
           };
         });
         callback(list);
@@ -520,6 +520,7 @@ export const createNewsArticle = async (articleData: Partial<NewsArticle>) => {
     likes: 0,
     likedBy: [],
     commentsCount: 0,
+    isAdminOnly: articleData.isAdminOnly || false,
   };
   await setDoc(docRef, newArticle);
   return newArticle;
