@@ -27,7 +27,18 @@ import { soundManager } from '../utils/audio';
 import { UserProfile } from '../types';
 import confetti from 'canvas-confetti';
 
-const AVATAR_OPTIONS = ['🎓', '👑', '🕯️', '📜', '🦁', '🌟', '🕊️', '✡️', '🎒', '🏆'];
+const AVATAR_OPTIONS = [
+  '/avatars/shofar.png',
+  '/avatars/torah.png',
+  '/avatars/kippa.png',
+  '/avatars/menorah.png',
+  '/avatars/dreidel.png',
+  '/avatars/rimon.png',
+  '/avatars/tzedakah.png',
+  '/avatars/siddur.png',
+  '/avatars/tallit.png',
+  '/avatars/luhot.png'
+];
 
 interface FirebaseAuthModalProps {
   isOpen: boolean;
@@ -55,7 +66,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   // Onboarding profile fields
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState('🎓');
+  const [selectedAvatar, setSelectedAvatar] = useState('/avatars/shofar.png');
   const [age, setAge] = useState<number>(10);
 
   const [loading, setLoading] = useState(false);
@@ -68,7 +79,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       setFirstName(currentUser.firstName || '');
       setLastName(currentUser.lastName || '');
       setAge(currentUser.age || 10);
-      setSelectedAvatar(currentUser.avatarIcon || '🎓');
+      setSelectedAvatar(currentUser.avatarIcon || '/avatars/shofar.png');
     }
   }, [isOpen, currentUser.isFirebaseUser, currentUser.firstName, currentUser.lastName, currentUser.age, currentUser.avatarIcon]);
 
@@ -80,7 +91,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
     setConfirmPassword('');
     setFirstName('');
     setLastName('');
-    setSelectedAvatar('🎓');
+    setSelectedAvatar('/avatars/shofar.png');
     setAge(10);
     setIsOnboarding(false);
     setErrorMsg(null);
@@ -135,7 +146,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       } else if (err.code === 'auth/invalid-email') {
         message = 'כתובת האימייל אינה תקינה.';
       } else if (err.code === 'auth/operation-not-allowed') {
-        message = 'התחברות באימייל וסיסמה אינה מופעלת ב-Firebase (יש להפעיל Email/Password ב-Firebase Console).';
+        message = 'התחברות באימייל אינה זמינה כרגע.';
       } else if (err.message) {
         message = err.message;
       }
@@ -329,13 +340,13 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                     key={icon}
                     type="button"
                     onClick={() => setSelectedAvatar(icon)}
-                    className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden transition-all ${
                       selectedAvatar === icon
-                        ? 'bg-amber-400 border-2 border-slate-900 scale-110 shadow-md'
-                        : 'bg-white border border-slate-200 hover:bg-amber-50'
+                        ? 'border-2 border-[#2fab65] scale-110 shadow-md ring-2 ring-[#2fab65]/20'
+                        : 'bg-white border border-slate-200 hover:bg-amber-50 hover:scale-105'
                     }`}
                   >
-                    {icon}
+                    <img src={icon} alt="Avatar" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>

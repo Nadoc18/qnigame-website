@@ -28,7 +28,10 @@ import {
   serverTimestamp,
   runTransaction,
   deleteDoc,
-  updateDoc
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+  increment
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { UserProfile, Game, GameComment, NewsArticle } from '../types';
@@ -193,7 +196,7 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       level: levelInfo.level,
       points: pts,
       coins: data.coins || 0,
-      avatarIcon: data.avatarIcon || '🎓',
+      avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
       avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
       joinedDate: data.joinedDate || new Date().toLocaleDateString('he-IL'),
       favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
@@ -215,7 +218,7 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       level: 1,
       points: 100,
       coins: 50,
-      avatarIcon: '🎓',
+      avatarIcon: '/avatars/shofar.png',
       avatarBg: 'from-amber-500 to-amber-700',
       joinedDate: new Date().toLocaleDateString('he-IL'),
       favoriteGameIds: [],
@@ -325,7 +328,7 @@ export const subscribeToUserProfile = (userId: string, callback: (profile: Parti
           level: levelInfo.level,
           points: pts,
           coins: data.coins || 0,
-          avatarIcon: data.avatarIcon || '🎓',
+          avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
           avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
           joinedDate: data.joinedDate || new Date().toLocaleDateString('he-IL'),
           favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
@@ -395,7 +398,7 @@ export const subscribeToGameComments = (
             gameId: data.gameId || gameId,
             userId: data.userId,
             userName: data.userName || 'שחקן',
-            userAvatar: data.userAvatar || '🎓',
+            userAvatar: data.userAvatar || '/avatars/shofar.png',
             userTitle: data.userTitle || 'לומד תורה',
             rating: data.rating || 5,
             content: data.content || '',
@@ -453,6 +456,7 @@ export const subscribeToNewsArticles = (
             mediaUrl: data.mediaUrl,
             linkUrl: data.linkUrl,
             likes: data.likes || 0,
+            likedBy: data.likedBy || [],
             commentsCount: data.commentsCount || 0,
             tags: data.tags || [],
             isAdminOnly: data.isAdminOnly || false,
@@ -478,27 +482,16 @@ export const toggleNewsArticleLike = async (articleId: string, userId: string) =
   try {
     const articleRef = doc(db, 'newsArticles', articleId);
     
-    // Run a transaction to safely increment/decrement
-    await runTransaction(db, async (transaction) => {
-      const articleDoc = await transaction.get(articleRef);
-      if (!articleDoc.exists()) {
-        throw new Error("Article does not exist!");
-      }
-      
-      const data = articleDoc.data();
-      const likedBy: string[] = data.likedBy || [];
-      const hasLiked = likedBy.includes(userId);
-      
-      const newLikedBy = hasLiked 
-        ? likedBy.filter(id => id !== userId) 
-        : [...likedBy, userId];
-        
-      const newLikes = hasLiked ? Math.max(0, (data.likes || 1) - 1) : (data.likes || 0) + 1;
-      
-      transaction.update(articleRef, {
-        likedBy: newLikedBy,
-        likes: newLikes
-      });
+    const articleDoc = await getDoc(articleRef);
+    if (!articleDoc.exists()) return;
+    
+    const data = articleDoc.data();
+    const likedBy: string[] = data.likedBy || [];
+    const hasLiked = likedBy.includes(userId);
+    
+    await updateDoc(articleRef, {
+      likedBy: hasLiked ? arrayRemove(userId) : arrayUnion(userId),
+      likes: hasLiked ? Math.max(0, (data.likes || 1) - 1) : increment(1)
     });
   } catch (error) {
     if (checkAndHandleQuotaError(error)) return;
@@ -739,7 +732,7 @@ export const updateLeaderboardEntry = async (userProfile: UserProfile) => {
       title: levelInfo.title,
       level: levelInfo.level,
       points: userProfile.points || 0,
-      avatarIcon: userProfile.avatarIcon || '🎓',
+      avatarIcon: userProfile.avatarIcon || '/avatars/shofar.jpg',
       badgeCount,
       playsCount,
       updatedAt: new Date().toISOString()
@@ -774,7 +767,7 @@ export const subscribeToLeaderboard = (
             title: data.title || 'תלמיד חכם',
             level: data.level || 1,
             points: data.points || 0,
-            avatarIcon: data.avatarIcon || '🎓',
+            avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
             badgeCount: data.badgeCount || 0,
             playsCount: data.playsCount || 0,
             updatedAt: data.updatedAt
@@ -792,3 +785,126 @@ export const subscribeToLeaderboard = (
   }
 };
 
+const EMOJI_TO_IMAGE: Record<string, string> = {
+  '🎓': '/avatars/shofar.png',
+  '✡️': '/avatars/torah.png',
+  '🕍': '/avatars/kippa.png',
+  '📜': '/avatars/siddur.png',
+  '🦁': '/avatars/dreidel.png',
+  '👑': '/avatars/rimon.png',
+  '🕎': '/avatars/menorah.png',
+  '🕯️': '/avatars/shofar.png',
+  '🍷': '/avatars/tallit.png',
+  '🍯': '/avatars/tzedakah.png',
+  '✡': '/avatars/torah.png'
+};
+
+export const migrateAvatarsInDB = async () => {
+  console.log("Starting DB migration for avatars...");
+  let count = 0;
+  
+  // 1. Users
+  const usersRef = collection(db, 'users');
+  const userSnap = await getDocs(usersRef);
+  for (const d of userSnap.docs) {
+    const data = d.data();
+    if (data.avatarIcon && !data.avatarIcon.startsWith('/')) {
+      const newAvatar = EMOJI_TO_IMAGE[data.avatarIcon] || '/avatars/shofar.png';
+      await updateDoc(doc(db, 'users', d.id), { avatarIcon: newAvatar });
+      count++;
+    }
+  }
+
+  // 2. Leaderboard
+  const lbRef = collection(db, 'leaderboard');
+  const lbSnap = await getDocs(lbRef);
+  for (const d of lbSnap.docs) {
+    const data = d.data();
+    if (data.avatarIcon && !data.avatarIcon.startsWith('/')) {
+      const newAvatar = EMOJI_TO_IMAGE[data.avatarIcon] || '/avatars/shofar.png';
+      await updateDoc(doc(db, 'leaderboard', d.id), { avatarIcon: newAvatar });
+      count++;
+    }
+  }
+
+  // 3. Game Comments
+  const gamesRef = collection(db, 'games');
+  const gamesSnap = await getDocs(gamesRef);
+  for (const gameDoc of gamesSnap.docs) {
+    const data = gameDoc.data();
+    if (data.comments && Array.isArray(data.comments)) {
+      let needsUpdate = false;
+      const newComments = data.comments.map((c: any) => {
+        if (c.userAvatar && !c.userAvatar.startsWith('/')) {
+          needsUpdate = true;
+          return {
+            ...c,
+            userAvatar: EMOJI_TO_IMAGE[c.userAvatar] || '/avatars/shofar.png'
+          };
+        }
+        return c;
+      });
+      if (needsUpdate) {
+        await updateDoc(doc(db, 'games', gameDoc.id), { comments: newComments });
+        count++;
+      }
+    }
+  }
+  
+  console.log("DB migration completed! Updated " + count + " documents.");
+  return count;
+};
+
+/**
+ * Subscribe to global settings (like maintenance mode)
+ */
+export const subscribeToGlobalSettings = (callback: (settings: { isMaintenanceMode?: boolean }) => void) => {
+  if (isQuotaExceeded) {
+    callback({ isMaintenanceMode: false });
+    return () => {};
+  }
+  try {
+    // We use the newsArticles collection to store settings because it already has 
+    // the correct Firebase Security Rules (read for all, write for admins)
+    const settingsRef = doc(db, 'newsArticles', '_SYSTEM_SETTINGS_');
+    return onSnapshot(
+      settingsRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          callback(docSnap.data() as { isMaintenanceMode?: boolean });
+        } else {
+          callback({});
+        }
+      },
+      (error) => {
+        checkAndHandleQuotaError(error);
+        console.error('Settings snapshot error:', error);
+        callback({ isMaintenanceMode: false }); // Unblock the loading screen on error
+      }
+    );
+  } catch (err) {
+    console.error('Error setting up settings snapshot:', err);
+    callback({ isMaintenanceMode: false });
+    return () => {};
+  }
+};
+
+/**
+ * Update maintenance mode status
+ */
+export const setMaintenanceMode = async (isEnabled: boolean) => {
+  if (isQuotaExceeded) return;
+  // We use newsArticles collection to bypass the need to update Firebase Security Rules
+  const settingsRef = doc(db, 'newsArticles', '_SYSTEM_SETTINGS_');
+  try {
+    await setDoc(settingsRef, { 
+      isMaintenanceMode: isEnabled,
+      isAdminOnly: false, // Required so non-admins can read this document without security rules throwing an error
+      // We do NOT add a createdAt field, so this document will be naturally filtered out
+      // from the news articles list (which relies on orderBy('createdAt', 'desc'))
+    }, { merge: true });
+  } catch (err) {
+    console.error('Error updating maintenance mode:', err);
+    throw err;
+  }
+};

@@ -12,6 +12,7 @@ import { GamePlayerFrame } from './components/GamePlayerFrame';
 import { AccountProfile } from './components/AccountProfile';
 import { NewsPage } from './components/NewsPage';
 import { AdminNewsPage } from './components/AdminNewsPage';
+import { MaintenancePage } from './components/MaintenancePage';
 
 import { GAMES_LIST } from './data/gamesData';
 import { NEWS_ARTICLES } from './data/newsData';
@@ -20,7 +21,7 @@ import { Game, GameCategory, UserProfile, NewsArticle } from './types';
 import { soundManager } from './utils/audio';
 import { cloudGamesService } from './services/cloudGamesService';
 import { FirebaseAuthModal } from './components/FirebaseAuthModal';
-import { auth, syncUserProfile, saveUserProfileToFirestore, saveGameProgressToFirestore, subscribeToUserProfile, updateLeaderboardEntry, subscribeToNewsArticles } from './lib/firebase';
+import { auth, syncUserProfile, saveUserProfileToFirestore, saveGameProgressToFirestore, subscribeToUserProfile, updateLeaderboardEntry, subscribeToNewsArticles, subscribeToGlobalSettings } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 import { getShabbatTimes, ShabbatInfo } from './utils/shabbat';
@@ -36,8 +37,8 @@ const INITIAL_USER: UserProfile = {
   level: 1,
   points: 0,
   coins: 0,
-  avatarIcon: '👤',
-  avatarBg: 'from-emerald-500 to-emerald-700',
+  avatarIcon: '/avatars/shofar.png',
+  avatarBg: 'from-amber-500 to-amber-700',
   joinedDate: '',
   favoriteGameIds: [],
   badges: INITIAL_BADGES,
@@ -66,6 +67,9 @@ export default function App() {
   
   // News State
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>(NEWS_ARTICLES);
+
+  // Global Settings State
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean | null>(null);
 
   // Load Games from Cloud
 
@@ -109,6 +113,14 @@ export default function App() {
     });
     return () => unsubscribe();
   }, [user.isAdmin]);
+
+  // Subscribe to Global Settings
+  useEffect(() => {
+    const unsubscribe = subscribeToGlobalSettings((settings) => {
+      setIsMaintenanceMode(settings.isMaintenanceMode || false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Level Up State
   const [acknowledgedLevels, setAcknowledgedLevels] = useState<Record<string, number>>(() => {
@@ -371,6 +383,35 @@ export default function App() {
           }
         }
       />
+    );
+  }
+
+  // Prevent flash of normal content while checking maintenance mode
+  if (isMaintenanceMode === null) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="w-16 h-16 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin mb-4" />
+        <p className="text-amber-500/80 font-bold text-sm animate-pulse">טוען נתונים...</p>
+      </div>
+    );
+  }
+
+  if (isMaintenanceMode && !user?.isAdmin) {
+    return (
+      <div className="font-sans text-slate-800" dir="rtl">
+        <FirebaseAuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => {
+            setIsAuthModalOpen(false);
+            setAuthCustomMsg(undefined);
+          }}
+          currentUser={user}
+          customMessage={authCustomMsg}
+          onAuthSuccess={handleAuthSuccess}
+          onQuickTestLogin={handleQuickTestLogin}
+        />
+        <MaintenancePage onOpenAuthModal={() => setIsAuthModalOpen(true)} />
+      </div>
     );
   }
 

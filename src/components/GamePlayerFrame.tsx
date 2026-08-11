@@ -44,6 +44,26 @@ interface GamePlayerFrameProps {
   onOpenAuthModal?: () => void;
 }
 
+const EMOJI_TO_IMAGE: Record<string, string> = {
+  '🎓': '/avatars/shofar.png',
+  '✡️': '/avatars/torah.png',
+  '🕍': '/avatars/kippa.png',
+  '📜': '/avatars/siddur.png',
+  '🦁': '/avatars/dreidel.png',
+  '👑': '/avatars/rimon.png',
+  '🕎': '/avatars/menorah.png',
+  '🕯️': '/avatars/shofar.png',
+  '🍷': '/avatars/tallit.png',
+  '🍯': '/avatars/tzedakah.png',
+  '✡': '/avatars/torah.png'
+};
+
+const getAvatarImage = (avatar: string | undefined): string => {
+  if (!avatar) return '/avatars/shofar.png';
+  if (avatar.startsWith('/')) return avatar;
+  return EMOJI_TO_IMAGE[avatar] || '/avatars/shofar.png';
+};
+
 export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   game,
   onBack,
@@ -60,6 +80,16 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   const [gameState, setGameState] = useState<'splash' | 'intro_video' | 'playing'>('splash');
   const videoRef = useRef<HTMLVideoElement>(null);
   const [key, setKey] = useState(0); // To force iframe restart
+
+  // iOS orientation detection
+  const isIOS = useMemo(() => typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)), []);
+  const [isPortrait, setIsPortrait] = useState(false);
+  useEffect(() => {
+    const checkOrientation = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    return () => window.removeEventListener('resize', checkOrientation);
+  }, []);
 
   // Generate temporary session token for authenticated user
   const gameToken = useMemo(() => {
@@ -275,7 +305,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
   const handleFullscreenToggle = () => {
     soundManager.playClick();
-    if (!document.fullscreenElement) {
+    if (!isFullscreen) {
       if (frameBoxRef.current?.requestFullscreen) {
         frameBoxRef.current.requestFullscreen().catch((err) => console.warn(err));
       } else if ((frameBoxRef.current as any)?.webkitRequestFullscreen) {
@@ -286,10 +316,12 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
         lockLandscapeOrientation();
       }
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch((err) => console.warn(err));
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
+      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch((err) => console.warn(err));
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        }
       }
       setIsFullscreen(false);
       unlockOrientation();
@@ -315,6 +347,20 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
     };
   }, [isLandscapeGame]);
 
+  // Lock body scroll when pseudo-fullscreen is active (critical for iOS)
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+      // Also scroll to top to hide Safari address bar where possible
+      window.scrollTo(0, 0);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFullscreen]);
+
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
@@ -331,7 +377,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
       gameId: game.id,
       userId: user.id,
       userName: user.username || user.email?.split('@')[0] || 'שחקן',
-      userAvatar: user.avatarIcon || '🎓',
+      userAvatar: user.avatarIcon || '/avatars/shofar.jpg',
       userTitle: user.title || 'לומד תורה',
       rating: userRating,
       content: commentText.trim(),
@@ -405,12 +451,13 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           </div>
         </div>
 
-        {/* Game Player Frame Box */}
         <div 
           ref={frameBoxRef}
-          className={`relative bg-[#233a18] border-4 border-[#3e632c] rounded-2xl overflow-hidden shadow-2xl transition-all ${
-            isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none p-0 bg-black w-screen h-screen flex items-center justify-center' : ''
-          }`}
+          className={
+            isFullscreen 
+              ? 'fixed inset-0 z-[99999] bg-black flex items-center justify-center m-0 p-0'
+              : 'relative bg-[#233a18] border-4 border-[#3e632c] rounded-2xl overflow-hidden shadow-2xl transition-all'
+          }
         >
           
           {/* Floating Minimize Button in Fullscreen Mode */}
@@ -418,7 +465,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             <button
               onClick={handleFullscreenToggle}
               title="צא ממסך מלא"
-              className="absolute top-4 left-4 z-50 px-4 py-2.5 rounded-2xl bg-yellow-400 hover:bg-yellow-300 text-indigo-950 transition-all flex items-center gap-2 text-xs font-black shadow-2xl cursor-pointer border border-yellow-300/60"
+              className={`absolute top-4 ${isIOS && isPortrait && isLandscapeGame ? 'right-4' : 'left-4'} z-50 px-4 py-2.5 rounded-2xl bg-yellow-400 hover:bg-yellow-300 text-indigo-950 transition-all flex items-center gap-2 text-xs font-black shadow-2xl cursor-pointer border border-yellow-300/60`}
             >
               <Minimize2 className="w-4 h-4" />
               <span>מזער מסך</span>
@@ -464,14 +511,18 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           )}
 
           {/* Interactive HTML5 / JSON Game Frame Window with Preloader & Intro Video */}
-          <div className={`relative bg-black w-full flex items-center justify-center overflow-hidden ${isFullscreen ? 'w-screen h-screen p-0 m-0 bg-black' : 'min-h-[450px] max-h-[85vh] p-2'}`}>
+          <div className={
+            isFullscreen 
+              ? 'w-full h-full p-0 m-0 bg-black flex items-center justify-center overflow-hidden'
+              : 'relative bg-black w-full min-h-[450px] max-h-[85vh] p-2 flex items-center justify-center overflow-hidden'
+          }>
             
             <div 
-              className={`relative bg-black mx-auto overflow-hidden transition-all duration-300 ${
+              className={
                 isFullscreen 
-                  ? (isLandscapeGame ? 'w-screen max-w-screen h-auto max-h-screen flex items-center justify-center shadow-2xl' : 'h-screen max-h-screen w-auto max-w-full flex items-center justify-center shadow-2xl')
-                  : 'rounded-2xl border border-indigo-900/60 shadow-2xl'
-              }`}
+                  ? 'w-full h-full flex items-center justify-center shadow-2xl bg-black overflow-hidden'
+                  : 'relative bg-black mx-auto overflow-hidden transition-all duration-300 rounded-2xl border border-indigo-900/60 shadow-2xl'
+              }
               style={
                 !isFullscreen
                   ? (isLandscapeGame
@@ -490,14 +541,25 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                           minHeight: (!game.frameHeight || game.frameHeight === '100%') && !game.aspectRatio ? '550px' : undefined
                         })
                   : (isLandscapeGame
-                      ? {
-                          width: '100vw',
+                      ? (isIOS && isPortrait ? {
+                          width: '100vh',
+                          height: 'auto',
+                          maxWidth: '100vh',
+                          maxHeight: '100vw',
+                          aspectRatio: formattedRatio,
+                          transform: 'rotate(90deg)',
+                          transformOrigin: 'center center',
+                          flexShrink: 0,
+                        } : {
+                          width: '100%',
+                          height: 'auto',
                           maxWidth: '100vw',
                           maxHeight: '100vh',
                           aspectRatio: formattedRatio,
-                        }
+                        })
                       : {
-                          height: '100vh',
+                          height: '100%',
+                          width: 'auto',
                           maxHeight: '100vh',
                           maxWidth: '100vw',
                           aspectRatio: formattedRatio,
@@ -524,16 +586,17 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                   <button
                     onClick={() => {
                       soundManager.playClick();
-                      if (videoRef.current) {
-                        const isIOS = typeof window !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
-                        if (!isIOS) {
+                      const isIOS = typeof window !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+                      
+                      if (isIOS) {
+                        setGameState('playing');
+                      } else {
+                        if (videoRef.current) {
                           videoRef.current.muted = false;
-                        } else {
-                          videoRef.current.muted = true;
+                          videoRef.current.play().catch(err => console.error("Play failed:", err));
                         }
-                        videoRef.current.play().catch(err => console.error("Play failed:", err));
+                        setGameState('intro_video');
                       }
-                      setGameState('intro_video');
                     }}
                     className="group relative z-10 inline-flex items-center gap-3 px-12 py-5 rounded-2xl bg-gradient-to-r from-[#c99719] via-[#e5af24] to-[#c99719] text-[#2f4d21] font-black text-2xl sm:text-3xl shadow-[0_0_40px_rgba(245,215,127,0.6)] hover:scale-105 hover:shadow-[0_0_60px_rgba(245,215,127,0.9)] transition-all active:scale-95 cursor-pointer"
                   >
@@ -679,11 +742,11 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           )}
 
           {/* Comment List */}
-          <div className="space-y-4 mb-8">
+          <div className="space-y-4 mb-8 max-h-[500px] overflow-y-auto pl-2">
             {comments.map((comm) => (
               <div key={comm.id} className="bg-slate-50/80 border border-slate-200 p-4 rounded-xl flex gap-3 shadow-sm">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-xl shrink-0 shadow-inner">
-                  {comm.userAvatar}
+                <div className="w-10 h-10 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-xl shrink-0 shadow-inner overflow-hidden">
+                  <img src={getAvatarImage(comm.userAvatar)} alt="Avatar" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">

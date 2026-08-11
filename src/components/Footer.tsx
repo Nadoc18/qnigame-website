@@ -62,7 +62,7 @@ export const Footer: React.FC<FooterProps> = ({ shabbatInfo }) => {
               </span>
             </div>
             <div className="flex justify-between pb-1.5 border-b border-emerald-500/20">
-              <span className="text-emerald-300">כניסת שבת:</span>
+              <span className="text-emerald-300">הדלקת נרות:</span>
               <span className="text-[#f5c242] font-mono font-black text-sm">
                 {shabbatInfo?.candleLightingStr || '19:18'}
               </span>

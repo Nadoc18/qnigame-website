@@ -18,6 +18,26 @@ import { ShabbatInfo } from '../utils/shabbat';
 import { formatInitials } from '../utils/format';
 import { QnigameLogo } from './QnigameLogo';
 
+const EMOJI_TO_IMAGE: Record<string, string> = {
+  '🎓': '/avatars/shofar.png',
+  '✡️': '/avatars/torah.png',
+  '🕍': '/avatars/kippa.png',
+  '📜': '/avatars/siddur.png',
+  '🦁': '/avatars/dreidel.png',
+  '👑': '/avatars/rimon.png',
+  '🕎': '/avatars/menorah.png',
+  '🕯️': '/avatars/shofar.png',
+  '🍷': '/avatars/tallit.png',
+  '🍯': '/avatars/tzedakah.png',
+  '✡': '/avatars/torah.png'
+};
+
+const getAvatarImage = (avatar: string | undefined): string => {
+  if (!avatar) return '/avatars/shofar.png';
+  if (avatar.startsWith('/')) return avatar;
+  return EMOJI_TO_IMAGE[avatar] || '/avatars/shofar.png';
+};
+
 interface HeaderProps {
   activeTab: 'landing' | 'news' | 'leaderboard' | 'account' | 'admin-secret-qni-8x7a9';
   setActiveTab: (tab: 'landing' | 'news' | 'leaderboard' | 'account' | 'admin-secret-qni-8x7a9') => void;
@@ -191,8 +211,8 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => { setActiveTab('account'); soundManager.playClick(); }}
                 className="hidden xl:flex items-center gap-2.5 bg-black/40 border border-emerald-500/30 hover:border-amber-400/80 px-3 py-1.5 rounded-2xl transition-all shadow-md group hover:scale-105"
               >
-                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-xs font-black text-slate-950 shadow-inner group-hover:rotate-12 transition-transform">
-                  🏆
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-xs font-black text-slate-950 shadow-inner overflow-hidden group-hover:rotate-12 transition-transform">
+                  <img src={getAvatarImage(user.avatarIcon)} alt="Avatar" className="w-full h-full object-cover" />
                 </div>
                 <div className="text-right leading-none">
                   <div className="text-xs font-black text-[#f5c242] flex items-center gap-1">

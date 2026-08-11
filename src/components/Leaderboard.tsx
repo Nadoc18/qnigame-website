@@ -9,6 +9,26 @@ interface LeaderboardProps {
   onOpenAuthModal?: () => void;
 }
 
+const EMOJI_TO_IMAGE: Record<string, string> = {
+  '🎓': '/avatars/shofar.png',
+  '✡️': '/avatars/torah.png',
+  '🕍': '/avatars/kippa.png',
+  '📜': '/avatars/siddur.png',
+  '🦁': '/avatars/dreidel.png',
+  '👑': '/avatars/rimon.png',
+  '🕎': '/avatars/menorah.png',
+  '🕯️': '/avatars/shofar.png',
+  '🍷': '/avatars/tallit.png',
+  '🍯': '/avatars/tzedakah.png',
+  '✡': '/avatars/torah.png'
+};
+
+const getAvatarImage = (avatar: string | undefined): string => {
+  if (!avatar) return '/avatars/shofar.png';
+  if (avatar.startsWith('/')) return avatar;
+  return EMOJI_TO_IMAGE[avatar] || '/avatars/shofar.png';
+};
+
 interface LeaderboardUser {
   id: string;
   rank: number;
@@ -42,11 +62,11 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
 
   const handleLocalSync = async () => {
     if (!currentUser.isFirebaseUser) {
-      setSyncStatus('התחבר לחשבון שחקן ב-Firebase כדי לבצע סנכרון מקומי');
+      setSyncStatus('התחבר לחשבון שחקן כדי לבצע סנכרון מקומי');
       return;
     }
     setIsSyncing(true);
-    setSyncStatus('מסנכרן נתוני שחקנים ב-Firebase...');
+    setSyncStatus('מסנכרן נתוני שחקנים...');
     try {
       await updateLeaderboardEntry(currentUser);
       setSyncStatus('סנכרון מקומי של השחקן הושלם בהצלחה!');
@@ -74,7 +94,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
       level: entry.level,
       points: entry.points,
       playsCount: entry.playsCount || 0,
-      avatarIcon: entry.avatarIcon,
+      avatarIcon: getAvatarImage(entry.avatarIcon),
       badgeCount: entry.badgeCount || 0,
       isCurrentUser: currentUser.isFirebaseUser && entry.id === currentUser.id,
     });
@@ -91,7 +111,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
       level: currentUser.level,
       points: currentUser.points,
       playsCount: userPlaysCount,
-      avatarIcon: currentUser.avatarIcon || '🎓',
+      avatarIcon: getAvatarImage(currentUser.avatarIcon),
       badgeCount: currentUser.badges.filter((b) => b.unlocked).length,
       isCurrentUser: true,
     });
@@ -118,7 +138,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
               <span>כפתור בדיקה מקומית (Local Test Only - מוסתר לחלוטין בפרודקשן!)</span>
             </span>
             <p className="text-slate-300 text-xs">
-              לחץ כדי לסנכרן את הפרופיל והניקוד המקומי של השחקן אל collection /leaderboard ב-Firebase.
+              לחץ כדי לסנכרן את הפרופיל והניקוד המקומי של השחקן.
             </p>
             {syncStatus && <p className="text-emerald-400 font-bold mt-1">{syncStatus}</p>}
           </div>
@@ -141,7 +161,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
             </div>
             <div>
               <h3 className="font-black text-base text-slate-900">רוצה להופיע בטבלת המובילים?</h3>
-              <p className="text-xs text-slate-600 font-medium">התחבר לחשבון שחקן ב-Firebase כדי שכל הנקודות וההישגים שלך יישמרו ותוכל להתחרות באלופים!</p>
+              <p className="text-xs text-slate-600 font-medium">התחבר לחשבון שחקן כדי שכל הנקודות וההישגים שלך יישמרו ותוכל להתחרות באלופים!</p>
             </div>
           </div>
           {onOpenAuthModal && (
@@ -180,8 +200,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
         {top3[1] && (
           <div className={`order-2 md:order-1 bg-white border-2 border-slate-300 rounded-3xl p-6 shadow-lg text-center space-y-3 relative overflow-hidden ${top3[1].isCurrentUser ? 'ring-4 ring-amber-400' : ''}`}>
             <div className="absolute top-3 right-3 text-2xl font-black text-slate-400">🥈 #2</div>
-            <div className="w-16 h-16 rounded-2xl bg-slate-100 border-2 border-slate-300 text-3xl mx-auto flex items-center justify-center shadow-md">
-              {top3[1].avatarIcon}
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 border-2 border-slate-300 text-3xl mx-auto flex items-center justify-center shadow-md overflow-hidden">
+              <img src={top3[1].avatarIcon} alt="Avatar" className="w-full h-full object-cover" />
             </div>
             <div>
               <h3 className="font-black text-slate-900 text-lg">
@@ -202,8 +222,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
         {top3[0] && (
           <div className={`order-1 md:order-2 bg-gradient-to-b from-amber-500/10 via-amber-400/5 to-white border-4 border-amber-400 rounded-3xl p-7 shadow-2xl text-center space-y-4 relative overflow-hidden md:-translate-y-4 ${top3[0].isCurrentUser ? 'ring-4 ring-amber-500' : ''}`}>
             <div className="absolute top-3 right-3 text-3xl font-black text-amber-500">🥇 #1</div>
-            <div className="w-20 h-20 rounded-3xl bg-amber-400 border-4 border-amber-300 text-4xl mx-auto flex items-center justify-center shadow-xl shadow-amber-400/30">
-              {top3[0].avatarIcon}
+            <div className="w-20 h-20 rounded-3xl bg-amber-400 border-4 border-amber-300 text-4xl mx-auto flex items-center justify-center shadow-xl shadow-amber-400/30 overflow-hidden">
+              <img src={top3[0].avatarIcon} alt="Avatar" className="w-full h-full object-cover" />
             </div>
             <div>
               <h3 className="font-black text-slate-950 text-xl">
@@ -224,8 +244,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
         {top3[2] && (
           <div className={`order-3 bg-white border-2 border-amber-700/30 rounded-3xl p-6 shadow-lg text-center space-y-3 relative overflow-hidden ${top3[2].isCurrentUser ? 'ring-4 ring-amber-400' : ''}`}>
             <div className="absolute top-3 right-3 text-2xl font-black text-amber-700">🥉 #3</div>
-            <div className="w-16 h-16 rounded-2xl bg-amber-50 border-2 border-amber-200 text-3xl mx-auto flex items-center justify-center shadow-md">
-              {top3[2].avatarIcon}
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 border-2 border-amber-200 text-3xl mx-auto flex items-center justify-center shadow-md overflow-hidden">
+              <img src={top3[2].avatarIcon} alt="Avatar" className="w-full h-full object-cover" />
             </div>
             <div>
               <h3 className="font-black text-slate-900 text-lg">
@@ -259,7 +279,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
               <div className="text-4xl">🏆</div>
               <div className="font-black text-slate-800 text-base">עדיין אין שחקנים רשומים בטבלת המובילים</div>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                התחבר לחשבון שחקן ב-Firebase ושחק במשחקים כדי להיות הראשון שכובש את ראש הטבלה!
+                התחבר לחשבון שחקן ושחק במשחקים כדי להיות הראשון שכובש את ראש הטבלה!
               </p>
             </div>
           ) : (
@@ -277,8 +297,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
                 </div>
 
                 <div className="col-span-5 sm:col-span-4 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-lg shrink-0">
-                    {user.avatarIcon}
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-lg shrink-0 overflow-hidden">
+                    <img src={user.avatarIcon} alt="Avatar" className="w-full h-full object-cover" />
                   </div>
                   <div>
                     <div className="font-black text-slate-900 flex items-center gap-1.5">

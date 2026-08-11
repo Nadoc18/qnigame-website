@@ -24,8 +24,28 @@ import {
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import { logout, saveUserProfileToFirestore } from '../lib/firebase';
-import { formatInitials } from '../utils/format';
 import { getLevelDetails } from '../utils/levels';
+import { formatInitials } from '../utils/format';
+
+const EMOJI_TO_IMAGE: Record<string, string> = {
+  '🎓': '/avatars/shofar.png',
+  '✡️': '/avatars/torah.png',
+  '🕍': '/avatars/kippa.png',
+  '📜': '/avatars/siddur.png',
+  '🦁': '/avatars/dreidel.png',
+  '👑': '/avatars/rimon.png',
+  '🕎': '/avatars/menorah.png',
+  '🕯️': '/avatars/shofar.png',
+  '🍷': '/avatars/tallit.png',
+  '🍯': '/avatars/tzedakah.png',
+  '✡': '/avatars/torah.png'
+};
+
+const getAvatarImage = (avatar: string | undefined): string => {
+  if (!avatar) return '/avatars/shofar.png';
+  if (avatar.startsWith('/')) return avatar;
+  return EMOJI_TO_IMAGE[avatar] || '/avatars/shofar.png';
+};
 
 interface AccountProfileProps {
   user: UserProfile;
@@ -36,7 +56,18 @@ interface AccountProfileProps {
   onOpenAuthModal?: () => void;
 }
 
-const AVATAR_OPTIONS = ['🎓', '👑', '🕯️', '📜', '🦁', '🌟', '🕊️', '✡️', '🎒', '🏆'];
+const AVATAR_OPTIONS = [
+  '/avatars/shofar.jpg',
+  '/avatars/torah.jpg',
+  '/avatars/kippa.jpg',
+  '/avatars/menorah.jpg',
+  '/avatars/dreidel.jpg',
+  '/avatars/rimon.jpg',
+  '/avatars/tzedakah.jpg',
+  '/avatars/siddur.jpg',
+  '/avatars/tallit.jpg',
+  '/avatars/luhot.jpg'
+];
 
 export const AccountProfile: React.FC<AccountProfileProps> = ({
   user,
@@ -150,8 +181,8 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
           {/* Avatar Icon */}
           <div className="relative group">
             <div className="w-24 h-24 rounded-2xl bg-[#c99719] p-1 shadow-xl">
-              <div className="w-full h-full bg-[#233a18] rounded-xl flex items-center justify-center text-4xl">
-                {user.avatarIcon}
+              <div className="w-full h-full bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src={getAvatarImage(user.avatarIcon)} alt="Avatar" className="w-full h-full object-cover" />
               </div>
             </div>
             <div className="absolute -bottom-2 -right-2 bg-[#c99719] text-[#2f4d21] text-xs font-black px-2.5 py-0.5 rounded-full border border-[#2f4d21] shadow">
@@ -169,7 +200,6 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
               </span>
             </div>
 
-            <p className="text-xs text-emerald-100 max-w-lg font-medium">{user.bio}</p>
 
             {/* Level Progress Bar */}
             {(() => {
@@ -462,13 +492,13 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
                     key={icon}
                     type="button"
                     onClick={() => handleAvatarSelect(icon)}
-                    className={`w-12 h-12 rounded-xl text-2xl flex items-center justify-center border transition-all ${
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden border transition-all ${
                       user.avatarIcon === icon
-                        ? 'bg-indigo-100 border-indigo-600 text-indigo-900 scale-110 shadow-md font-bold'
-                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                        ? 'border-[#2fab65] scale-110 shadow-md ring-2 ring-[#2fab65]/20'
+                        : 'border-slate-200 hover:border-[#2fab65]/50 hover:scale-105'
                     }`}
                   >
-                    {icon}
+                    <img src={icon} alt="Avatar" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -509,17 +539,6 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
                 value={ageInput}
                 onChange={(e) => setAgeInput(Number(e.target.value))}
                 className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium max-w-xs"
-              />
-            </div>
-
-            {/* Bio Input */}
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">תיאור אישי:</label>
-              <textarea
-                value={bioInput}
-                onChange={(e) => setBioInput(e.target.value)}
-                rows={3}
-                className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
               />
             </div>
 

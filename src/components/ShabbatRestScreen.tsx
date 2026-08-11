@@ -130,7 +130,7 @@ export const ShabbatRestScreen: React.FC<ShabbatRestScreenProps> = ({
 
           <div className="grid grid-cols-2 gap-4 text-center">
             <div className="bg-amber-950/40 p-4 rounded-2xl border border-amber-500/20">
-              <span className="text-xs text-amber-300/80 font-bold block mb-1">כניסת שבת</span>
+              <span className="text-xs text-amber-300/80 font-bold block mb-1">הדלקת נרות</span>
               <span className="text-2xl font-black font-mono text-amber-400">{shabbatInfo.candleLightingStr}</span>
             </div>
             <div className="bg-amber-950/40 p-4 rounded-2xl border border-amber-500/20">

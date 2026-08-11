@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Zap,
   Lock,
+  ThumbsUp,
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import { LogoShowcaseCard } from './QnigameLogo';
@@ -468,7 +469,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </p>
 
                   <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold">
-                    <span>מאת: {item.author}</span>
+                    <div className="flex items-center gap-1">
+                      <span>מאת: {item.author}</span>
+                      {user?.id && item.likedBy?.includes(user.id) && (
+                        <span className="mr-2 text-[#c99719] flex items-center gap-1 bg-[#c99719]/10 px-1.5 py-0.5 rounded">
+                          <ThumbsUp className="w-3 h-3 fill-[#c99719]" />
+                          <span>אהבת</span>
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[#2fab65] font-bold group-hover:underline">קרא כתבה ➔</span>
                   </div>
                 </div>

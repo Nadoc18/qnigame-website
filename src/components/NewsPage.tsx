@@ -154,7 +154,12 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId,
                   className={`flex items-center gap-1 transition-colors ${item.likedBy?.includes(user?.id || '') ? 'text-[#c99719]' : 'text-slate-400 hover:text-[#c99719]'}`}
                 >
                   <ThumbsUp className={`w-3.5 h-3.5 ${item.likedBy?.includes(user?.id || '') ? 'fill-[#c99719]' : ''}`} />
-                  <span>{item.likes || 0}</span>
+                  <span className="flex items-center gap-1">
+                    {item.likes || 0}
+                    {item.likedBy?.includes(user?.id || '') && (
+                      <span className="text-[10px] bg-[#c99719]/15 px-1.5 py-0.5 rounded font-bold">אהבת</span>
+                    )}
+                  </span>
                 </button>
               </div>
             </div>
@@ -275,7 +280,7 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId,
                 }`}
               >
                 <ThumbsUp className={`w-4 h-4 ${readingArticle.likedBy?.includes(user?.id || '') ? 'fill-[#c99719]' : ''}`} />
-                <span>לייק לכתבה ({readingArticle.likes || 0})</span>
+                <span>{readingArticle.likedBy?.includes(user?.id || '') ? 'אהבת את הכתבה!' : 'לייק לכתבה'} ({readingArticle.likes || 0})</span>
               </button>
 
               <button

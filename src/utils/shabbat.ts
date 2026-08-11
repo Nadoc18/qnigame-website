@@ -75,13 +75,17 @@ export function checkIsShabbatFallback(now: Date = new Date()): boolean {
  */
 export async function getShabbatTimes(): Promise<ShabbatInfo> {
   const now = new Date();
+  
+  // Use IP-based fallback if geolocation fails
+  let url = 'https://www.hebcal.com/shabbat?cfg=json&M=on&b=18';
+  let geoCityName = '';
 
   // Check browser timezone to prevent defaulting to US/New York for users in Israel
   const userTZ = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : '';
   const isIsraelTZ = userTZ === 'Asia/Jerusalem' || userTZ === 'Israel';
 
   // Default to Jerusalem, Israel (geonameid=281184) if in Israel, else IP lookup
-  let url = isIsraelTZ
+  url = isIsraelTZ
     ? 'https://www.hebcal.com/shabbat?cfg=json&geonameid=281184&M=on&b=18'
     : 'https://www.hebcal.com/shabbat?cfg=json&geo=ip&M=on&b=18';
 
@@ -97,7 +101,23 @@ export async function getShabbatTimes(): Promise<ShabbatInfo> {
       });
       if (pos) {
         const { latitude, longitude } = pos.coords;
-        url = `https://www.hebcal.com/shabbat?cfg=json&geo=pos&lat=${latitude}&lon=${longitude}&M=on&b=18`;
+        const safeTzid = userTZ || 'Asia/Jerusalem';
+        const tzidParam = `&tzid=${safeTzid}`;
+        url = `https://www.hebcal.com/shabbat?cfg=json&geo=pos&latitude=${latitude}&longitude=${longitude}${tzidParam}&M=on`;
+        
+        try {
+          const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=he`);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (geoData.city) {
+              geoCityName = geoData.city;
+            } else if (geoData.locality) {
+              geoCityName = geoData.locality;
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to reverse geocode city', e);
+        }
       }
     } catch {
       // Fallback
@@ -149,7 +169,7 @@ export async function getShabbatTimes(): Promise<ShabbatInfo> {
       rawCity = 'ירושלים';
     }
 
-    const hebrewCity = translateCityToHebrew(rawCity);
+    let hebrewCity = geoCityName || translateCityToHebrew(rawCity);
 
     return {
       isShabbat,
