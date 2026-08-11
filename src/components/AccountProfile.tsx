@@ -57,16 +57,16 @@ interface AccountProfileProps {
 }
 
 const AVATAR_OPTIONS = [
-  '/avatars/shofar.jpg',
-  '/avatars/torah.jpg',
-  '/avatars/kippa.jpg',
-  '/avatars/menorah.jpg',
-  '/avatars/dreidel.jpg',
-  '/avatars/rimon.jpg',
-  '/avatars/tzedakah.jpg',
-  '/avatars/siddur.jpg',
-  '/avatars/tallit.jpg',
-  '/avatars/luhot.jpg'
+  '/avatars/shofar.png',
+  '/avatars/torah.png',
+  '/avatars/kippa.png',
+  '/avatars/menorah.png',
+  '/avatars/dreidel.png',
+  '/avatars/rimon.png',
+  '/avatars/tzedakah.png',
+  '/avatars/siddur.png',
+  '/avatars/tallit.png',
+  '/avatars/luhot.png'
 ];
 
 export const AccountProfile: React.FC<AccountProfileProps> = ({

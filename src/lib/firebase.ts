@@ -33,6 +33,7 @@ import {
   arrayRemove,
   increment
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { UserProfile, Game, GameComment, NewsArticle } from '../types';
 import { getLevelDetails } from '../utils/levels';
@@ -89,6 +90,7 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
+auth.languageCode = 'he'; // Ensure emails and Firebase auth pages are in Hebrew
 setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.warn('Firebase auth persistence setup note:', err);
 });
@@ -98,6 +100,9 @@ export const googleProvider = new GoogleAuthProvider();
 export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
+
+// Initialize Firebase Functions
+export const functions = getFunctions(app, 'us-central1'); // Use default region, or match your function region if deployed elsewhere
 
 export const getGamesFromFirestore = async (isAdmin: boolean = false): Promise<Game[]> => {
   const gamesPath = 'games';
@@ -238,6 +243,46 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
 
     await setDoc(userRef, docData);
 
+    // Trigger welcome email via Firebase Extension (Trigger Email)
+    if (newProfile.email) {
+      try {
+        const mailRef = collection(db, 'mail');
+        await addDoc(mailRef, {
+          to: newProfile.email,
+          from: 'info@qnigame.com',
+          message: {
+            subject: 'ברוכים הבאים לקניגיים! 🎮',
+            html: `
+              <div dir="rtl" style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; text-align: right; background-color: #f8fafc; padding: 30px; border-radius: 20px; border: 2px solid #059669;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <h1 style="color: #059669; margin-bottom: 5px;">קניגיים</h1>
+                  <p style="color: #64748b; font-size: 14px; margin-top: 0;">המרכז למשחקי יהדות וערכים</p>
+                </div>
+                
+                <h2 style="color: #f59e0b;">שלום ${newProfile.username}! 👋</h2>
+                <p style="font-size: 16px; line-height: 1.5;">ברוכים הבאים ל<strong>קניגיים</strong> - אנו שמחים מאוד שהצטרפתם לקהילה שלנו!</p>
+                <p style="font-size: 16px; line-height: 1.5;">כבר עכשיו מחכים לכם <strong>100 נקודות במתנה</strong> להתחלה מהירה. שחקו, למדו, התקדמו וצברו נקודות!</p>
+                
+                <div style="text-align: center; margin: 40px 0;">
+                  <a href="https://qnigame.com" style="background-color: #059669; color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 18px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    היכנסו לאתר והתחילו לשחק
+                  </a>
+                </div>
+                
+                <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 30px 0;" />
+                <div style="text-align: center; color: #94a3b8; font-size: 12px;">
+                  <p>צוות קניגיים</p>
+                  <p>מייל זה נשלח אוטומטית. אין להשיב אליו.</p>
+                </div>
+              </div>
+            `
+          }
+        });
+      } catch (e) {
+        console.error('Failed to trigger welcome email', e);
+      }
+    }
+
     return newProfile;
   }
 };
@@ -365,8 +410,17 @@ export const logout = () => {
   return signOut(auth);
 };
 
-export const resetPassword = (email: string) => {
-  return sendPasswordResetEmail(auth, email);
+export const resetPassword = async (email: string) => {
+  try {
+    const sendCustomPasswordResetEmail = httpsCallable(functions, 'sendCustomPasswordResetEmail');
+    await sendCustomPasswordResetEmail({ email });
+  } catch (err: any) {
+    // Fallback to standard Firebase reset if Cloud Function fails or isn't deployed yet
+    console.warn('Custom password reset failed, falling back to standard Firebase reset', err);
+    return sendPasswordResetEmail(auth, email, {
+      url: typeof window !== 'undefined' ? window.location.origin : 'https://qnigame.com'
+    });
+  }
 };
 
 // ==========================================

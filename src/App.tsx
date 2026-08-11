@@ -29,6 +29,7 @@ import { getLevelDetails } from './utils/levels';
 import { LevelUpModal } from './components/LevelUpModal';
 import { ShabbatRestScreen } from './components/ShabbatRestScreen';
 import { Leaderboard } from './components/Leaderboard';
+import { ResetPasswordPage } from './components/ResetPasswordPage';
 
 const INITIAL_USER: UserProfile = {
   id: 'user-guest',
@@ -71,6 +72,9 @@ export default function App() {
   // Global Settings State
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean | null>(null);
 
+  // Password Reset Interception State
+  const [resetOobCode, setResetOobCode] = useState<string | null>(null);
+
   // Load Games from Cloud
 
   // Load / Save state from localStorage
@@ -87,6 +91,18 @@ export default function App() {
     }
     return INITIAL_USER;
   });
+
+  // Check URL for custom password reset code on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const mode = urlParams.get('mode');
+      const oobCode = urlParams.get('oobCode');
+      if (mode === 'resetPassword' && oobCode) {
+        setResetOobCode(oobCode);
+      }
+    }
+  }, []);
 
   // Load Games from Cloud
   useEffect(() => {
@@ -382,6 +398,25 @@ export default function App() {
             locationName: 'ישראל',
           }
         }
+        onBypass={() => setShabbatInfo(null)}
+      />
+    );
+  }
+
+  // Intercept normal rendering for custom password reset page
+  if (resetOobCode) {
+    return (
+      <ResetPasswordPage 
+        oobCode={resetOobCode} 
+        onSuccess={() => {
+          setResetOobCode(null);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setIsAuthModalOpen(true);
+        }}
+        onCancel={() => {
+          setResetOobCode(null);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }}
       />
     );
   }
