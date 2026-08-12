@@ -12,7 +12,9 @@ import {
   Sparkles, 
   KeyRound, 
   UserCheck, 
-  ShieldCheck 
+  ShieldCheck,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { 
   loginWithEmail, 
@@ -68,6 +70,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   const [lastName, setLastName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('/avatars/shofar.png');
   const [age, setAge] = useState<number>(10);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -468,7 +471,12 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (mode === 'forgot' && successMsg) {
+                      setSuccessMsg(null);
+                    }
+                  }}
                   placeholder="your@email.com"
                   className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 dir-ltr font-mono"
                 />
@@ -480,14 +488,24 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                     <Lock className="w-3.5 h-3.5 text-emerald-600" />
                     <span>סיסמה</span>
                   </label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 dir-ltr font-mono"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl py-3 pr-3 pl-10 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 dir-ltr font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -497,14 +515,24 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                     <Lock className="w-3.5 h-3.5 text-emerald-600" />
                     <span>אישור סיסמה (אימות)</span>
                   </label>
-                  <input
-                    type="password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 dir-ltr font-mono"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl py-3 pr-3 pl-10 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 dir-ltr font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -534,30 +562,32 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : mode === 'login' ? (
-                  <>
-                    <LogIn className="w-4 h-4" />
-                    <span>התחבר לחשבון</span>
-                  </>
-                ) : mode === 'register' ? (
-                  <>
-                    <UserPlus className="w-4 h-4" />
-                    <span>צור חשבון חדש</span>
-                  </>
-                ) : (
-                  <>
-                    <KeyRound className="w-4 h-4" />
-                    <span>שלח קישור לאיפוס</span>
-                  </>
-                )}
-              </button>
+              {!(mode === 'forgot' && successMsg) && (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : mode === 'login' ? (
+                    <>
+                      <LogIn className="w-4 h-4" />
+                      <span>התחבר לחשבון</span>
+                    </>
+                  ) : mode === 'register' ? (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      <span>צור חשבון חדש</span>
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="w-4 h-4" />
+                      <span>שלח קישור לאיפוס</span>
+                    </>
+                  )}
+                </button>
+              )}
 
               {/* Quick Test Mode Login Button (STRICTLY DEV / LOCALHOST ONLY - HIDDEN IN PRODUCTION) */}
               {((import.meta as any).env?.DEV || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))) && onQuickTestLogin && (

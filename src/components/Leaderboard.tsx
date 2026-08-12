@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Trophy, Crown, Award, Star, Flame, Sparkles, User, ShieldCheck, Radio } from 'lucide-react';
 import { UserProfile } from '../types';
-import { formatInitials } from '../utils/format';
+import { getDisplayName } from '../utils/format';
 import { subscribeToLeaderboard, updateLeaderboardEntry, LeaderboardEntry } from '../lib/firebase';
 
 interface LeaderboardProps {
@@ -205,7 +205,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
             </div>
             <div>
               <h3 className="font-black text-slate-900 text-lg">
-                {top3[1].isCurrentUser ? top3[1].username : formatInitials(top3[1].username, top3[1].firstName, top3[1].lastName)}
+                {getDisplayName(top3[1].username, top3[1].firstName, top3[1].lastName, top3[1].isCurrentUser, currentUser.isAdmin)}
               </h3>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-300 inline-block mt-1">
                 {top3[1].title}
@@ -227,7 +227,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
             </div>
             <div>
               <h3 className="font-black text-slate-950 text-xl">
-                {top3[0].isCurrentUser ? top3[0].username : formatInitials(top3[0].username, top3[0].firstName, top3[0].lastName)}
+                {getDisplayName(top3[0].username, top3[0].firstName, top3[0].lastName, top3[0].isCurrentUser, currentUser.isAdmin)}
               </h3>
               <span className="text-xs px-3 py-1 rounded-full bg-amber-400/30 text-amber-900 font-black border border-amber-400 inline-block mt-1">
                 👑 {top3[0].title}
@@ -249,7 +249,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
             </div>
             <div>
               <h3 className="font-black text-slate-900 text-lg">
-                {top3[2].isCurrentUser ? top3[2].username : formatInitials(top3[2].username, top3[2].firstName, top3[2].lastName)}
+                {getDisplayName(top3[2].username, top3[2].firstName, top3[2].lastName, top3[2].isCurrentUser, currentUser.isAdmin)}
               </h3>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 font-bold border border-amber-200 inline-block mt-1">
                 {top3[2].title}
@@ -302,7 +302,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
                   </div>
                   <div>
                     <div className="font-black text-slate-900 flex items-center gap-1.5">
-                      <span>{user.isCurrentUser ? user.username : formatInitials(user.username, user.firstName, user.lastName)}</span>
+                      <span>{getDisplayName(user.username, user.firstName, user.lastName, user.isCurrentUser, currentUser.isAdmin)}</span>
                       {user.isCurrentUser && (
                         <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full font-bold">
                           אתה

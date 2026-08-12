@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Game, GameCategory, NewsArticle, UserProfile, getGameThumbnailUrl, getGameThumbnailBgClass } from '../types';
 import { 
   Gamepad2, 
@@ -22,7 +22,7 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
-import { LogoShowcaseCard } from './QnigameLogo';
+import { LogoShowcaseCard, LOGO_SRC, FALLBACK_LOGO_SRC } from './QnigameLogo';
 
 const isYouTube = (url: string) => url && (url.includes('youtube.com') || url.includes('youtu.be'));
 
@@ -54,12 +54,24 @@ interface LandingPageProps {
 const CATEGORIES: GameCategory[] = [
   'הכל',
   'פרשת השבוע',
-  'תנ"ך ומורשת',
+  'תנ"ך',
   'שבת וחגים',
-  'ברכות והלכה',
-  'חשיבה ופאזל',
-  'טריוויה ודעת',
+  'הלכה',
+  'חשיבה',
+  'טריוויה',
 ];
+
+const getGameTypeHebrew = (type: string) => {
+  if (type === 'trivia') return 'טריוויה';
+  if (type === 'pixijs' || type === 'arcade') return 'ארקייד';
+  if (type === 'tanach_wordle') return 'משחקי מילים';
+  if (type === 'menorah_puzzle') return 'פאזלים';
+  if (type === 'brachot' || type === 'shabbat') return 'הלכה למעשה';
+  return 'שונות';
+};
+
+const GAME_TYPES_OPTIONS = ['הכל', 'טריוויה', 'ארקייד', 'משחקי מילים', 'פאזלים', 'הלכה למעשה', 'שונות'];
+const AGE_OPTIONS = ['הכל', 'לכל המשפחה', 'מגיל 4', 'מגיל 6', 'מגיל 8', 'מגיל 10', 'מגיל 12'];
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   games,
@@ -74,9 +86,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenNews,
 }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('הכל');
-  const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'new'>('popular');
+  const [selectedGameType, setSelectedGameType] = useState<string>('הכל');
+  const [selectedAge, setSelectedAge] = useState<string>('הכל');
+  const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'new' | 'play_time'>('popular');
+  const [featuredIndex, setFeaturedIndex] = useState(0);
 
-  // Filter games based on search, category, difficulty
+  // Auto-filter by user age when it loads
+  useEffect(() => {
+    if (user && user.age) {
+      if (user.age < 6) setSelectedAge('מגיל 4');
+      else if (user.age < 8) setSelectedAge('מגיל 6');
+      else if (user.age < 10) setSelectedAge('מגיל 8');
+      else if (user.age < 12) setSelectedAge('מגיל 10');
+      else setSelectedAge('מגיל 12');
+    }
+  }, [user]);
+
+  // Filter games based on search, category, difficulty, game type, age
   const filteredGames = games.filter((game) => {
     const matchesSearch =
       game.title.includes(searchQuery) ||
@@ -89,15 +115,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     const matchesDifficulty =
       selectedDifficulty === 'הכל' || game.difficulty === selectedDifficulty;
 
-    return matchesSearch && matchesCategory && matchesDifficulty;
+    const matchesGameType = 
+      selectedGameType === 'הכל' || getGameTypeHebrew(game.gameType) === selectedGameType;
+
+    let matchesAge = true;
+    if (selectedAge !== 'הכל') {
+      if (selectedAge === 'לכל המשפחה') {
+        matchesAge = game.ageRating.includes('לכל המשפחה');
+      } else {
+        const filterMinAge = parseInt(selectedAge.match(/\d+/)?.[0] || '0');
+        const gameMinAge = parseInt(game.ageRating.match(/\d+/)?.[0] || '0');
+        if (game.ageRating.includes('לכל המשפחה')) {
+          matchesAge = true;
+        } else {
+          matchesAge = gameMinAge <= filterMinAge;
+        }
+      }
+    }
+
+    return matchesSearch && matchesCategory && matchesDifficulty && matchesGameType && matchesAge;
   }).sort((a, b) => {
     if (sortBy === 'popular') return b.playCount - a.playCount;
     if (sortBy === 'rating') return b.rating - a.rating;
     if (sortBy === 'new') return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
+    if (sortBy === 'play_time') return (b.totalTimePlayed || 0) - (a.totalTimePlayed || 0);
     return 0;
   });
 
-  const featuredGame = games.find((g) => g.isPopular) || games[0];
+  const featuredGamesList = games.filter((g) => g.isPopular);
+  const featuredGames = featuredGamesList.length > 0 ? featuredGamesList : games.slice(0, 3);
+  const featuredGame = featuredGames[featuredIndex] || games[0];
+
+  useEffect(() => {
+    if (featuredGames.length <= 1) return;
+    const timer = setInterval(() => {
+      setFeaturedIndex((prev) => (prev + 1) % featuredGames.length);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [featuredGames.length, featuredIndex]);
 
   return (
     <div className="space-y-12 pb-16">
@@ -107,9 +162,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           
           <div className="lg:col-span-7 space-y-6 text-center lg:text-right">
-          <div className="inline-flex items-center px-8 py-4 rounded-full bg-[#c99719]/20 border border-[#c99719]/50 text-[#f5d77f] text-3xl font-black shadow-inner">
-          <span>שחק. למד. התקדם.</span>
-          </div>
+            {/* Huge Glowing Logo */}
+            <div className="flex justify-center lg:justify-start mb-6">
+              <div className="relative group bg-white p-6 sm:p-8 rounded-3xl shadow-2xl border-2 border-[#c99719] hover:border-[#e5af24] transition-all inline-flex items-center justify-center overflow-hidden">
+                 <div className="absolute inset-0 bg-white blur-xl transition-colors" />
+                 <img 
+                   src={LOGO_SRC} 
+                   alt="קניגיים Qnigame - פלטפורמת משחקי קודש" 
+                   className="w-full max-w-[320px] sm:max-w-[480px] lg:max-w-[550px] h-auto object-contain filter drop-shadow-2xl relative z-10 transition-transform group-hover:scale-105"
+                   onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_LOGO_SRC; }}
+                 />
+              </div>
+            </div>
+
+            <div className="inline-flex items-center px-8 py-4 rounded-full bg-[#c99719]/20 border border-[#c99719]/50 text-[#f5d77f] text-3xl font-black shadow-inner">
+              <span>שחק. למד. התקדם.</span>
+            </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
               משחקים תורניים וערכיים <br />
@@ -119,7 +187,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h1>
 
             <p className="text-emerald-100 text-base sm:text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium">
-              ספריית משחקי דפדפן אינטראקטיביים בתנ״ך, פרשת השבוע, הלכה, ברכות ושבת קודש.
+              ספריית משחקי דפדפן אינטראקטיביים בתנ״ך, פרשת השבוע, הלכה, ברכות ,שבת קודש ועוד.
               שחק באופן מיידי, צבור נקודות ותגים, והתקדם בדרגות התורה והדעת!
             </p>
 
@@ -160,11 +228,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* Hero Spotlight & Logo Card */}
           <div className="lg:col-span-5 space-y-6">
-            <LogoShowcaseCard />
+            <LogoShowcaseCard news={news} onOpenNews={onOpenNews} />
 
             <div className="relative group bg-white/95 border-2 border-[#c99719] hover:border-[#e5af24] p-5 rounded-3xl shadow-2xl transition-all overflow-hidden">
               {featuredGame.isNew && (
-                <div className="absolute top-6 -right-12 w-44 text-center z-20 bg-rose-500 text-white text-base font-black py-2 shadow-lg transform rotate-45 border-y border-rose-400 pointer-events-none">
+                <div className="absolute top-4 right-4 z-20 bg-rose-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-md">
                   חדש
                 </div>
               )}
@@ -219,8 +287,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onClick={() => { soundManager.playClick(); onSelectGame(featuredGame.id); }}
                   className="w-full mt-2 py-2.5 rounded-xl bg-[#2fab65] hover:bg-[#28995a] text-white font-black text-xs transition-all shadow-md text-center"
                 >
-                  פתח במסגרת המשחק
+                  שחק עכשיו
                 </button>
+
+                {/* Carousel Controls */}
+                {featuredGames.length > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-4 pt-2">
+                    {featuredGames.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setFeaturedIndex(idx);
+                          soundManager.playClick();
+                        }}
+                        className={`transition-all rounded-full ${
+                          idx === featuredIndex 
+                            ? 'w-6 h-2 bg-[#c99719]' 
+                            : 'w-2 h-2 bg-slate-300 hover:bg-[#c99719]/50'
+                        }`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -249,31 +338,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span className="text-xs text-slate-500 font-bold hidden sm:inline">מיון לפי:</span>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'popular' | 'rating' | 'new')}
+                onChange={(e) => setSortBy(e.target.value as 'popular' | 'rating' | 'new' | 'play_time')}
                 className="bg-white border border-slate-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2fab65] shadow-sm"
               >
-                <option value="popular">הפופולריים ביותר</option>
+                <option value="popular">הפופולריים ביותר (מספר משחקים)</option>
                 <option value="rating">המדורגים ביותר</option>
                 <option value="new">חדשים ראשונים</option>
+                {user.isAdmin && (
+                  <option value="play_time">זמן משחק כולל (מנהל)</option>
+                )}
               </select>
             </div>
           </div>
 
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => { soundManager.playClick(); setSelectedCategory(cat); }}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
-                  selectedCategory === cat
-                    ? 'bg-[#2f4d21] text-white shadow-md shadow-emerald-950/20 scale-105'
-                    : 'bg-white text-slate-700 hover:bg-emerald-50 hover:text-[#2fab65] border border-slate-200 shadow-sm'
-                }`}
+          {/* Dropdown Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">סוג לימוד</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => { soundManager.playClick(); setSelectedCategory(e.target.value as GameCategory); }}
+                className="bg-white border border-slate-300 text-slate-800 text-sm font-bold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2fab65] shadow-sm appearance-none cursor-pointer"
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%232fab65\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'left 0.75rem center', backgroundSize: '1.25rem' }}
               >
-                {cat}
-              </button>
-            ))}
+                {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            </div>
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">סוג משחק</label>
+              <select
+                value={selectedGameType}
+                onChange={(e) => { soundManager.playClick(); setSelectedGameType(e.target.value); }}
+                className="bg-white border border-slate-300 text-slate-800 text-sm font-bold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2fab65] shadow-sm appearance-none cursor-pointer"
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%232fab65\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'left 0.75rem center', backgroundSize: '1.25rem' }}
+              >
+                {GAME_TYPES_OPTIONS.map(type => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">התאמת גיל</label>
+              <select
+                value={selectedAge}
+                onChange={(e) => { soundManager.playClick(); setSelectedAge(e.target.value); }}
+                className="bg-white border border-slate-300 text-slate-800 text-sm font-bold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2fab65] shadow-sm appearance-none cursor-pointer"
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%232fab65\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'left 0.75rem center', backgroundSize: '1.25rem' }}
+              >
+                {AGE_OPTIONS.map(age => <option key={age} value={age}>{age}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -288,8 +402,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 className="group relative bg-white border border-slate-200 hover:border-[#2fab65] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between"
               >
                 {game.isNew && (
-                  <div className="absolute top-5 -right-12 w-40 text-center z-20 bg-rose-500 text-white text-sm font-black py-1.5 shadow-lg transform rotate-45 border-y border-rose-400 pointer-events-none">
-                    חדש
+                  <div className="absolute top-4 right-4 z-20 bg-rose-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white animate-pulse">
+                    חדש!
                   </div>
                 )}
                 <div>
@@ -307,9 +421,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     )}
                     <div className="flex items-center justify-between relative z-10">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[11px] font-black px-3 py-1 rounded-full bg-[#2f4d21]/80 backdrop-blur-md text-[#f5d77f] border border-[#c99719]/40">
-                          {game.category}
-                        </span>
                         {game.isAdminOnly && (
                           <span title="סודי (גלוי רק למנהל)" className="text-[11px] font-black px-3 py-1 rounded-full bg-slate-800/80 backdrop-blur-md text-white border border-slate-600 flex items-center gap-1">
                             <Lock className="w-3 h-3" />
@@ -365,6 +476,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Admin Stats Badge */}
+                {user.isAdmin && (
+                  <div className="px-5 pb-2">
+                    <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 flex flex-col gap-1 text-[10px] font-bold text-slate-700">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1"><Gamepad2 className="w-3 h-3 text-emerald-600" /> שוחק:</span>
+                        <span className="text-emerald-700">{game.playCount.toLocaleString()} פעמים</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1"><Play className="w-3 h-3 text-amber-500" /> זמן כולל:</span>
+                        <span className="text-amber-600">
+                          {game.totalTimePlayed ? (
+                            game.totalTimePlayed >= 3600 
+                              ? `${Math.floor(game.totalTimePlayed / 3600)} שעות ו-${Math.floor((game.totalTimePlayed % 3600) / 60)} דק׳`
+                              : `${Math.floor(game.totalTimePlayed / 60)} דק׳`
+                          ) : '0 דק׳'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Card Footer */}
                 <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex items-center justify-between">

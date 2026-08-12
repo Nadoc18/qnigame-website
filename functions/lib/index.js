@@ -37,10 +37,12 @@ exports.sendCustomPasswordResetEmail = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = __importStar(require("firebase-admin"));
 const auth_1 = require("firebase-admin/auth");
-const firestore_1 = require("firebase-admin/firestore");
+const nodemailer = __importStar(require("nodemailer"));
 admin.initializeApp();
-const db = (0, firestore_1.getFirestore)();
-exports.sendCustomPasswordResetEmail = (0, https_1.onCall)({ invoker: 'public', cors: true }, async (request) => {
+exports.sendCustomPasswordResetEmail = (0, https_1.onCall)({
+    invoker: 'public',
+    cors: true
+}, async (request) => {
     var _a;
     const email = (_a = request.data) === null || _a === void 0 ? void 0 : _a.email;
     if (!email || typeof email !== 'string') {
@@ -62,45 +64,57 @@ exports.sendCustomPasswordResetEmail = (0, https_1.onCall)({ invoker: 'public', 
         // 4. Construct the custom QniGame reset link
         // We send them to the main domain, where App.tsx will intercept mode=resetPassword
         const customResetLink = `https://qnigame.com/?mode=resetPassword&oobCode=${oobCode}`;
-        // 5. Send a beautiful HTML email via the Trigger Email extension
-        await db.collection('mail').add({
-            to: email,
-            from: 'info@qnigame.com',
-            message: {
-                subject: 'איפוס סיסמה לקניגיים 🔐',
-                html: `
-          <div dir="rtl" style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; text-align: right; background-color: #f8fafc; padding: 30px; border-radius: 20px; border: 2px solid #059669;">
-            <div style="text-align: center; margin-bottom: 20px;">
-              <h1 style="color: #059669; margin-bottom: 5px;">קניגיים</h1>
-              <p style="color: #64748b; font-size: 14px; margin-top: 0;">המרכז למשחקי יהדות וערכים</p>
-            </div>
-            
-            <h2 style="color: #f59e0b;">שלום ${displayName}! 👋</h2>
-            <p style="font-size: 16px; line-height: 1.5;">ביקשת לאפס את הסיסמה שלך למערכת קניגיים.</p>
-            <p style="font-size: 16px; line-height: 1.5;">לחץ על הכפתור למטה כדי להגדיר סיסמה חדשה (הקישור בתוקף לשעה אחת):</p>
-            
-            <div style="text-align: center; margin: 40px 0;">
-              <a href="${customResetLink}" style="background-color: #059669; color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 18px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                הגדר סיסמה חדשה
-              </a>
-            </div>
-            
-            <p style="font-size: 14px; color: #64748b;">אם לא ביקשת לאפס את הסיסמה, תוכל להתעלם ממייל זה בבטחה. הסיסמה שלך לא תשתנה.</p>
-            
-            <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 30px 0;" />
-            <div style="text-align: center; color: #94a3b8; font-size: 12px;">
-              <p>מייל זה נשלח אוטומטית. אין להשיב אליו.</p>
-              <p>© קניגיים ${new Date().getFullYear()}</p>
-            </div>
-          </div>
-        `
-            }
+        // 5. Send a beautiful HTML email via nodemailer (Brevo SMTP)
+        const transporter = nodemailer.createTransport({
+            host: 'smtp-relay.brevo.com',
+            port: 587,
+            secure: false, // true for 465, false for other ports
+            auth: {
+                user: 'b53fb0001@smtp-brevo.com',
+                pass: process.env.BREVO_SMTP_PASS || '',
+            },
         });
+        const htmlContent = `
+      <div dir="rtl" style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; text-align: right; background-color: #f8fafc; padding: 30px; border-radius: 20px; border: 2px solid #059669;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #059669; margin-bottom: 5px;">קניגיים</h1>
+          <p style="color: #64748b; font-size: 14px; margin-top: 0;">המרכז למשחקי יהדות וערכים</p>
+        </div>
+        
+        <h2 style="color: #f59e0b;">שלום ${displayName}! 👋</h2>
+        <p style="font-size: 16px; line-height: 1.5;">ביקשת לאפס את הסיסמה שלך למערכת קניגיים.</p>
+        <p style="font-size: 16px; line-height: 1.5;">לחץ על הכפתור למטה כדי להגדיר סיסמה חדשה (הקישור בתוקף לשעה אחת):</p>
+        
+        <div style="text-align: center; margin: 40px 0;">
+          <a href="${customResetLink}" style="background-color: #059669; color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 18px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            הגדר סיסמה חדשה
+          </a>
+        </div>
+        
+        <p style="font-size: 14px; color: #64748b;">אם לא ביקשת לאפס את הסיסמה, תוכל להתעלם ממייל זה בבטחה. הסיסמה שלך לא תשתנה.</p>
+        
+        <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 30px 0;" />
+        <div style="text-align: center; color: #94a3b8; font-size: 12px;">
+          <p>מייל זה נשלח אוטומטית. אין להשיב אליו.</p>
+          <img src="https://qnigame.com/assets/qnigame_logo_main.png" alt="Qnigame" style="height: 45px; margin: 15px 0; opacity: 0.8;" />
+          <p>© קניגיים ${new Date().getFullYear()}</p>
+        </div>
+      </div>
+    `;
+        await transporter.sendMail({
+            from: '"Qnigame" <info@qnigame.com>',
+            replyTo: 'noreply@qnigame.com',
+            to: email,
+            subject: 'איפוס סיסמה לקניגיים 🔐',
+            html: htmlContent,
+        });
+        console.log(`Successfully sent nodemailer email to: ${email}`);
         return { success: true };
     }
     catch (error) {
-        console.error('Error generating custom password reset link:', error);
+        console.error('CRITICAL ERROR in sendCustomPasswordResetEmail:', error);
         if (error.code === 'auth/user-not-found') {
+            console.log('User not found. Returning success to prevent enumeration.');
             // Don't leak user existence to the client, just return success
             // to mimic Firebase's anti-enumeration protection
             return { success: true };

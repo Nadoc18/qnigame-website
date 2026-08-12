@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyRound, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
+import { KeyRound, ShieldCheck, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { confirmPasswordReset } from 'firebase/auth';
 import { soundManager } from '../utils/audio';
@@ -13,6 +13,7 @@ interface ResetPasswordPageProps {
 export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ oobCode, onSuccess, onCancel }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -82,14 +83,24 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ oobCode, o
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>סיסמה חדשה</span>
             </label>
-            <input
-              type="password"
-              required
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-3.5 text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 dir-ltr font-mono text-lg transition-all"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl py-3.5 pr-4 pl-12 text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 dir-ltr font-mono text-lg transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -97,14 +108,24 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ oobCode, o
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>אימות סיסמה חדשה</span>
             </label>
-            <input
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-3.5 text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 dir-ltr font-mono text-lg transition-all"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl py-3.5 pr-4 pl-12 text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 dir-ltr font-mono text-lg transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
 
           <button

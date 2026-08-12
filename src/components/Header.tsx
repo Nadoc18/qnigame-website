@@ -16,7 +16,7 @@ import { UserProfile } from '../types';
 import { soundManager } from '../utils/audio';
 import { ShabbatInfo } from '../utils/shabbat';
 import { formatInitials } from '../utils/format';
-import { QnigameLogo } from './QnigameLogo';
+
 
 const EMOJI_TO_IMAGE: Record<string, string> = {
   '🎓': '/avatars/shofar.png',
@@ -88,7 +88,9 @@ export const Header: React.FC<HeaderProps> = ({
              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-black shrink-0 hidden lg:inline-block shadow-[0_0_10px_rgba(245,194,66,0.2)]">
               בס״ד
             </span>
-            <QnigameLogo className="h-11 sm:h-12" />
+            <div className="flex items-center bg-white p-0.5 rounded-2xl shadow-md border-2 border-amber-200/80 transition-transform group-hover:scale-105 overflow-hidden">
+              <img src="/favicon.png" alt="Qnigame" className="h-11 sm:h-14 w-auto object-contain drop-shadow-md scale-110" />
+            </div>
            
           </div>
 
@@ -118,7 +120,7 @@ export const Header: React.FC<HeaderProps> = ({
           <nav className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => { setActiveTab('landing'); soundManager.playClick(); }}
-              className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 ${
+              className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-lg transition-all duration-200 ${
                 activeTab === 'landing'
                   ? 'bg-gradient-to-r from-[#f5c242] to-[#e5af24] text-[#122810] shadow-[0_0_18px_rgba(245,194,66,0.45)] scale-105 border border-amber-200'
                   : 'text-emerald-100 hover:text-white hover:bg-white/10 border border-transparent'
@@ -130,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={() => { setActiveTab('leaderboard'); soundManager.playClick(); }}
-              className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 ${
+              className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-lg transition-all duration-200 ${
                 activeTab === 'leaderboard'
                   ? 'bg-gradient-to-r from-[#f5c242] to-[#e5af24] text-[#122810] shadow-[0_0_18px_rgba(245,194,66,0.45)] scale-105 border border-amber-200'
                   : 'text-emerald-100 hover:text-white hover:bg-white/10 border border-transparent'
@@ -142,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={() => { setActiveTab('news'); soundManager.playClick(); }}
-              className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 ${
+              className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-lg transition-all duration-200 ${
                 activeTab === 'news'
                   ? 'bg-gradient-to-r from-[#f5c242] to-[#e5af24] text-[#122810] shadow-[0_0_18px_rgba(245,194,66,0.45)] scale-105 border border-amber-200'
                   : 'text-emerald-100 hover:text-white hover:bg-white/10 border border-transparent'
@@ -156,7 +158,7 @@ export const Header: React.FC<HeaderProps> = ({
             {user.isFirebaseUser && (
               <button
                 onClick={() => { setActiveTab('account'); soundManager.playClick(); }}
-                className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 ${
+                className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-lg transition-all duration-200 ${
                   activeTab === 'account'
                     ? 'bg-gradient-to-r from-[#f5c242] to-[#e5af24] text-[#122810] shadow-[0_0_18px_rgba(245,194,66,0.45)] scale-105 border border-amber-200'
                     : 'text-emerald-100 hover:text-white hover:bg-white/10 border border-transparent'
@@ -171,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
             {user.isAdmin && (
               <button
                 onClick={() => { setActiveTab('admin-secret-qni-8x7a9'); soundManager.playClick(); }}
-                className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 ${
+                className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-lg transition-all duration-200 ${
                   activeTab === 'admin-secret-qni-8x7a9'
                     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_0_18px_rgba(147,51,234,0.45)] scale-105 border border-purple-400'
                     : 'text-purple-300 hover:text-white hover:bg-white/10 border border-transparent'
@@ -192,34 +194,33 @@ export const Header: React.FC<HeaderProps> = ({
                 }
                 soundManager.playClick();
               }}
-              className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all border ${
+              className={`hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm lg:text-lg font-black transition-all border ${
                 user.isFirebaseUser
                   ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 hover:bg-emerald-500/30'
                   : 'bg-amber-500/20 border-amber-400/50 text-amber-300 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,194,66,0.2)]'
               }`}
               title={user.isFirebaseUser ? `מחובר בתור ${user.username || user.email}` : 'לחץ להתחברות לחשבון'}
             >
-              <UserCheck className={`w-3.5 h-3.5 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
-              <span className="truncate max-w-[110px] sm:max-w-[150px]">
+              <UserCheck className={`w-5 h-5 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
+              <span className="truncate max-w-[150px] lg:max-w-[200px]">
                 {user.isFirebaseUser ? (user.username || 'מחובר') : 'התחברות'}
               </span>
             </button>
 
-            {/* Quick RPG HUD User Card - Only when user is logged in */}
             {user.isFirebaseUser && (
               <button
                 onClick={() => { setActiveTab('account'); soundManager.playClick(); }}
-                className="hidden xl:flex items-center gap-2.5 bg-black/40 border border-emerald-500/30 hover:border-amber-400/80 px-3 py-1.5 rounded-2xl transition-all shadow-md group hover:scale-105"
+                className="hidden xl:flex items-center gap-3 bg-black/40 border border-emerald-500/30 hover:border-amber-400/80 px-4 py-2 rounded-2xl transition-all shadow-md group hover:scale-105"
               >
-                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-xs font-black text-slate-950 shadow-inner overflow-hidden group-hover:rotate-12 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-xs font-black text-slate-950 shadow-inner overflow-hidden group-hover:rotate-12 transition-transform">
                   <img src={getAvatarImage(user.avatarIcon)} alt="Avatar" className="w-full h-full object-cover" />
                 </div>
                 <div className="text-right leading-none">
-                  <div className="text-xs font-black text-[#f5c242] flex items-center gap-1">
+                  <div className="text-sm font-black text-[#f5c242] flex items-center gap-1.5">
                     <span>{user.points}</span>
-                    <span className="text-[10px] text-amber-200/80">נק׳</span>
+                    <span className="text-xs text-amber-200/80">נק׳</span>
                   </div>
-                  <div className="text-[10px] text-emerald-300 font-bold truncate max-w-[80px] mt-0.5">{user.title}</div>
+                  <div className="text-xs text-emerald-300 font-bold truncate max-w-[100px] mt-1">{user.title}</div>
                 </div>
               </button>
             )}

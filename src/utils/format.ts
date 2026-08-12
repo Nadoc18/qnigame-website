@@ -23,8 +23,30 @@ export function formatInitials(name?: string, firstName?: string, lastName?: str
   if (parts.length === 1) {
     return `${parts[0].charAt(0).toUpperCase()}.`;
   }
-
-  const firstInit = parts[0].charAt(0).toUpperCase();
-  const lastInit = parts[parts.length - 1].charAt(0).toUpperCase();
-  return `${firstInit}. ${lastInit}.`;
+  
+  const f = parts[0].charAt(0).toUpperCase();
+  const l = parts[parts.length - 1].charAt(0).toUpperCase();
+  return `${f}. ${l}.`;
 }
+
+/**
+ * Returns the full name if the viewer is an admin or the user themselves,
+ * otherwise returns anonymized initials.
+ */
+export function getDisplayName(
+  username?: string,
+  firstName?: string,
+  lastName?: string,
+  isCurrentUser: boolean = false,
+  isAdmin: boolean = false
+): string {
+  if (isCurrentUser || isAdmin) {
+    if (firstName && lastName) return `${firstName} ${lastName}`;
+    if (firstName) return firstName;
+    if (lastName) return lastName;
+    return username || 'אנונימי';
+  }
+  return formatInitials(username, firstName, lastName);
+}
+
+

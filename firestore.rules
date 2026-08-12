@@ -34,7 +34,9 @@ service cloud.firestore {
     // Games catalog rules
     match /games/{gameId} {
       allow read: if resource.data.isAdminOnly != true || (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
-      allow write: if true;
+      allow create, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow update: if (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true) || 
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playCount', 'totalTimePlayed']));
     }
 
     // Game comments rules: anyone can read, authenticated users can post, anyone can update likes

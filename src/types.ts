@@ -1,11 +1,11 @@
 export type GameCategory = 
   | 'הכל'
   | 'פרשת השבוע'
-  | 'תנ"ך ומורשת'
+  | 'תנ"ך'
   | 'שבת וחגים'
-  | 'ברכות והלכה'
-  | 'חשיבה ופאזל'
-  | 'טריוויה ודעת';
+  | 'הלכה'
+  | 'חשיבה'
+  | 'טריוויה';
 
 export interface GameFile {
   name: string;
@@ -23,6 +23,7 @@ export interface Game {
   difficulty: 'קל' | 'בינוני' | 'מאתגר' | 'לכל המשפחה';
   ageRating: string;
   playCount: number;
+  totalTimePlayed?: number;
   rating: number;
   ratingCount: number;
   author: string;
@@ -190,6 +191,8 @@ export interface NewsArticle {
   commentsCount: number;
   tags: string[];
   isAdminOnly?: boolean;
+  published?: boolean;
+  isFeatured?: boolean;
 }
 
 export interface GameComment {

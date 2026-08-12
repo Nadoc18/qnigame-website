@@ -19,17 +19,21 @@ import {
   Award,
   Crown,
   FastForward,
-  Film
+  Film,
+  Trophy
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import confetti from 'canvas-confetti';
-import { formatInitials } from '../utils/format';
+import { getDisplayName } from '../utils/format';
 import { generateGameSessionToken } from '../utils/gameTokenService';
 
 import { 
   subscribeToGameComments, 
   addGameCommentToFirestore, 
-  likeGameCommentInFirestore 
+  likeGameCommentInFirestore,
+  incrementGameStats,
+  subscribeToGameLeaderboard,
+  LeaderboardEntry
 } from '../lib/firebase';
 
 interface GamePlayerFrameProps {
@@ -90,6 +94,50 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
     window.addEventListener('resize', checkOrientation);
     return () => window.removeEventListener('resize', checkOrientation);
   }, []);
+
+  // Track gameplay duration and global stats
+  const playStartTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (gameState === 'playing') {
+      playStartTimeRef.current = Date.now();
+    } else {
+      // If we transition out of 'playing', save the time immediately
+      if (playStartTimeRef.current) {
+        const playDurationSeconds = Math.floor((Date.now() - playStartTimeRef.current) / 1000);
+        if (playDurationSeconds >= 5) {
+          incrementGameStats(game.id, 1, playDurationSeconds);
+        }
+        playStartTimeRef.current = null;
+      }
+    }
+    
+    // Emergency save if the user closes the tab or refreshes (F5)
+    const handleBeforeUnload = () => {
+      if (playStartTimeRef.current) {
+        const playDurationSeconds = Math.floor((Date.now() - playStartTimeRef.current) / 1000);
+        if (playDurationSeconds >= 5) {
+          incrementGameStats(game.id, 1, playDurationSeconds);
+        }
+        playStartTimeRef.current = null;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      
+      // Save on normal unmount
+      if (playStartTimeRef.current) {
+        const playDurationSeconds = Math.floor((Date.now() - playStartTimeRef.current) / 1000);
+        if (playDurationSeconds >= 5) {
+          incrementGameStats(game.id, 1, playDurationSeconds);
+        }
+        playStartTimeRef.current = null;
+      }
+    };
+  }, [gameState, game.id]);
 
   // Generate temporary session token for authenticated user
   const gameToken = useMemo(() => {
@@ -195,18 +243,29 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
   const [userRating, setUserRating] = useState(5);
   const [commentText, setCommentText] = useState('');
+  const [commentError, setCommentError] = useState('');
+  const [commentSuccess, setCommentSuccess] = useState(false);
+  const [gameLeaderboard, setGameLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [comments, setComments] = useState<GameComment[]>([]);
+
+  // Sound effects
+  const playClick = () => soundManager.playClick();
 
   // Subscribe to live Firestore comments for current game
   useEffect(() => {
-    let unsub: () => void = () => {};
-    unsub = subscribeToGameComments(game.id, (cloudComments) => {
-      if (cloudComments) {
-        setComments(cloudComments);
+    const unsubComments = subscribeToGameComments(game.id, (comms) => {
+      if (comms) {
+        setComments(comms);
       }
     });
+
+    const unsubLeaderboard = subscribeToGameLeaderboard(game.id, (entries) => {
+      setGameLeaderboard(entries);
+    }, 6); // fetch top 6
+
     return () => {
-      if (unsub) unsub();
+      unsubComments();
+      unsubLeaderboard();
     };
   }, [game.id]);
 
@@ -399,13 +458,24 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
       if (onOpenAuthModal) onOpenAuthModal();
       return;
     }
-    if (comm.likedBy && comm.likedBy.includes(user.id)) return;
+    
+    const hasLiked = comm.likedBy && comm.likedBy.includes(user.id);
+    const isLiking = !hasLiked;
     
     soundManager.playClick();
     setComments((prev) =>
-      prev.map((c) => (c.id === comm.id ? { ...c, likes: c.likes + 1, likedBy: [...(c.likedBy || []), user.id] } : c))
+      prev.map((c) => {
+        if (c.id === comm.id) {
+          if (isLiking) {
+            return { ...c, likes: c.likes + 1, likedBy: [...(c.likedBy || []), user.id] };
+          } else {
+            return { ...c, likes: Math.max(0, c.likes - 1), likedBy: (c.likedBy || []).filter(id => id !== user.id) };
+          }
+        }
+        return c;
+      })
     );
-    likeGameCommentInFirestore(comm.id, user.id);
+    likeGameCommentInFirestore(comm.id, user.id, isLiking);
   };
 
   const relatedGames = allGames.filter(g => g.id !== game.id).slice(0, 3);
@@ -713,6 +783,43 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             </p>
           </div>
 
+          {/* Discreet Game Leaderboard */}
+          <div className="bg-slate-50/80 border border-slate-200 p-5 rounded-2xl space-y-3 shadow-sm">
+            <div className="flex items-center gap-2 text-slate-800 font-black text-sm mb-2 border-b border-slate-200 pb-2">
+              <Trophy className="w-4 h-4 text-amber-500" />
+              <h3>המובילים במשחק זה</h3>
+            </div>
+            
+            {gameLeaderboard.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {gameLeaderboard.map((entry, idx) => (
+                  <div key={entry.id} className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm text-xs hover:border-amber-300 transition-colors group">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="font-black text-slate-400 w-3">{idx + 1}.</span>
+                      <img src={getAvatarImage(entry.avatarIcon)} alt="Avatar" className="w-5 h-5 rounded-full object-cover" />
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="font-bold text-slate-700 truncate group-hover:text-amber-700 transition-colors">
+                          {getDisplayName(entry.username, entry.firstName, entry.lastName, entry.userId === user.id, user.isAdmin)}
+                        </span>
+                        {entry.userId === user.id && (
+                          <span className="text-[9px] bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black shrink-0">
+                            אתה
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="font-black text-amber-600 shrink-0 mr-2">{entry.points}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 px-2 bg-white rounded-xl border border-dashed border-slate-300">
+                <p className="text-sm text-slate-500 font-bold">אין עדיין שיאים במשחק זה.</p>
+                <p className="text-xs text-amber-600 font-black mt-1">שחק עכשיו והיה הראשון בטבלה!</p>
+              </div>
+            )}
+          </div>
+
         </div>
 
         {/* Comments & Reviews Section */}
@@ -754,7 +861,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                       <span className="font-bold text-sm text-slate-900">
                         {comm.userId === user.id || comm.userName === user.username
                           ? comm.userName
-                          : formatInitials(comm.userName)}
+                          : getDisplayName(comm.userName, undefined, undefined, comm.userId === user.id, user.isAdmin)}
                       </span>
                       {(comm.userId === user.id || comm.userName === user.username) && (
                         <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full font-bold">
@@ -778,16 +885,15 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                     <p className="text-sm text-slate-700 leading-relaxed font-medium">{comm.content}</p>
                     <button
                       type="button"
-                      disabled={comm.likedBy?.includes(user.id)}
                       onClick={() => handleLikeComment(comm)}
-                      className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border font-bold transition-all shrink-0 ${
+                      className={`group flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border font-bold transition-all shrink-0 cursor-pointer active:scale-95 ${
                         comm.likedBy?.includes(user.id)
-                          ? 'bg-rose-100 border-rose-300 text-rose-800 opacity-80 cursor-default'
-                          : 'text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border-rose-200 active:scale-95'
+                          ? 'bg-rose-100 border-rose-300 text-rose-800 hover:bg-rose-200'
+                          : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
                       }`}
-                      title={comm.likedBy?.includes(user.id) ? "כבר אהבת את התגובה" : "לייק לתגובה"}
+                      title={comm.likedBy?.includes(user.id) ? "ביטול לייק" : "לייק לתגובה"}
                     >
-                      <Heart className={`w-3.5 h-3.5 ${comm.likedBy?.includes(user.id) ? 'fill-rose-600 text-rose-600' : 'fill-rose-500 text-rose-500'}`} />
+                      <Heart className={`w-3.5 h-3.5 transition-colors ${comm.likedBy?.includes(user.id) ? 'fill-rose-600 text-rose-600' : 'fill-transparent text-slate-400 group-hover:text-slate-600'}`} />
                       <span>{comm.likes}</span>
                     </button>
                   </div>

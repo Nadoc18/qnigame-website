@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { NewsArticle, UserProfile } from '../types';
+import { NewsArticle, UserProfile, Game } from '../types';
 import { createNewsArticle, updateNewsArticle, deleteNewsArticle, setMaintenanceMode, subscribeToGlobalSettings } from '../lib/firebase';
-import { Plus, Edit2, Trash2, X, Save, AlertCircle, ShieldAlert, Timer } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Save, AlertCircle, ShieldAlert, Timer, Gamepad2, ArrowUpDown, Clock } from 'lucide-react';
 
 interface AdminNewsPageProps {
   articles: NewsArticle[];
   user: UserProfile;
+  allGames?: Game[];
 }
 
-export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user }) => {
+export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user, allGames = [] }) => {
+  const [adminTab, setAdminTab] = useState<'news' | 'games'>('news');
+  const [gameSortBy, setGameSortBy] = useState<'plays' | 'time'>('plays');
+  
   const [editingArticle, setEditingArticle] = useState<Partial<NewsArticle> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,17 +107,35 @@ export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user }) 
             <ShieldAlert className="w-5 h-5" />
             <span>{isMaintenanceMode ? '⚠️ מצב תחזוקה פעיל! (לחץ לביטול)' : 'הפעל מצב תחזוקה (נעל את האתר)'}</span>
           </button>
-          <button
-            onClick={() => setEditingArticle({
-              title: '', excerpt: '', content: '', date: new Date().toLocaleDateString('he-IL'),
-              author: user.username || 'מערכת', category: 'עדכוני משחקים', readTime: '3 דק׳', mediaType: 'image'
-            })}
-            className="flex items-center gap-2 bg-[#2fab65] text-white px-4 py-2 rounded-xl font-bold hover:bg-[#258d51] transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            <span>כתבה חדשה</span>
-          </button>
+          {adminTab === 'news' && (
+            <button
+              onClick={() => setEditingArticle({
+                title: '', excerpt: '', content: '', date: new Date().toLocaleDateString('he-IL'),
+                author: user.username || 'מערכת', category: 'עדכוני משחקים', readTime: '3 דק׳', mediaType: 'image'
+              })}
+              className="flex items-center gap-2 bg-[#2fab65] text-white px-4 py-2 rounded-xl font-bold hover:bg-[#258d51] transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              <span>כתבה חדשה</span>
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* Tab Switcher */}
+      <div className="flex gap-4 border-b border-slate-200 mb-8" dir="rtl">
+        <button
+          onClick={() => setAdminTab('news')}
+          className={`pb-4 px-2 font-bold text-lg flex items-center gap-2 transition-colors ${adminTab === 'news' ? 'text-amber-600 border-b-2 border-amber-500' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          📰 ניהול חדשות
+        </button>
+        <button
+          onClick={() => setAdminTab('games')}
+          className={`pb-4 px-2 font-bold text-lg flex items-center gap-2 transition-colors ${adminTab === 'games' ? 'text-amber-600 border-b-2 border-amber-500' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          <Gamepad2 className="w-5 h-5" /> סטטיסטיקות משחקים
+        </button>
       </div>
 
       {/* Maintenance Confirmation Modal */}
@@ -220,17 +242,32 @@ export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user }) 
             <textarea value={editingArticle.content || ''} onChange={e => setEditingArticle({...editingArticle, content: e.target.value})} className="w-full p-2 border rounded-lg bg-slate-50 h-40" />
           </div>
 
-          <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <input 
-              type="checkbox" 
-              id="isAdminOnly" 
-              checked={editingArticle.isAdminOnly || false} 
-              onChange={e => setEditingArticle({...editingArticle, isAdminOnly: e.target.checked})} 
-              className="w-4 h-4 text-[#2fab65] focus:ring-[#2fab65] border-gray-300 rounded"
-            />
-            <label htmlFor="isAdminOnly" className="text-sm font-bold text-slate-700 cursor-pointer">
-              סודי (גלוי רק למנהל המערכת) 🔒
-            </label>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <input 
+                type="checkbox" 
+                id="isAdminOnly" 
+                checked={editingArticle.isAdminOnly || false} 
+                onChange={e => setEditingArticle({...editingArticle, isAdminOnly: e.target.checked})} 
+                className="w-4 h-4 text-slate-600 focus:ring-slate-600 border-gray-300 rounded"
+              />
+              <label htmlFor="isAdminOnly" className="text-sm font-bold text-slate-700 cursor-pointer">
+                סודי (מנהל בלבד) 🔒
+              </label>
+            </div>
+
+            <div className="flex-1 flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <input 
+                type="checkbox" 
+                id="isFeatured" 
+                checked={editingArticle.isFeatured || false} 
+                onChange={e => setEditingArticle({...editingArticle, isFeatured: e.target.checked})} 
+                className="w-4 h-4 text-amber-500 focus:ring-amber-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isFeatured" className="text-sm font-bold text-amber-800 cursor-pointer">
+                הצג ב'חדשות חמות' 🔥
+              </label>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -265,7 +302,7 @@ export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user }) 
             </button>
           </div>
         </div>
-      ) : (
+      ) : adminTab === 'news' ? (
         <div className="grid gap-4" dir="rtl">
           {articles.map(article => (
             <div key={article.id} className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm">
@@ -286,6 +323,64 @@ export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user }) 
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="space-y-6" dir="rtl">
+          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <h2 className="font-bold text-slate-700">כל המשחקים ({allGames.length})</h2>
+            <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
+              <button
+                onClick={() => setGameSortBy('plays')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${gameSortBy === 'plays' ? 'bg-white shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <ArrowUpDown className="w-4 h-4" /> לפי מספר כניסות
+              </button>
+              <button
+                onClick={() => setGameSortBy('time')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${gameSortBy === 'time' ? 'bg-white shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <Clock className="w-4 h-4" /> לפי זמן כולל
+              </button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {allGames
+              .slice()
+              .sort((a, b) => {
+                if (gameSortBy === 'plays') return (b.playCount || 0) - (a.playCount || 0);
+                return (b.totalTimePlayed || 0) - (a.totalTimePlayed || 0);
+              })
+              .map(game => (
+              <div key={game.id} className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col gap-3 shadow-sm hover:border-amber-200 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl text-white bg-gradient-to-br ${game.thumbnailBg || 'from-emerald-600 to-teal-800'}`}>
+                    <i className={`fas fa-${game.iconName}`}></i>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 leading-tight">{game.title}</h3>
+                    <p className="text-xs text-slate-500">{game.category}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-100">
+                  <div className="bg-blue-50 p-3 rounded-xl flex flex-col items-center justify-center text-center">
+                    <span className="text-xl font-black text-blue-600">{(game.playCount || 0).toLocaleString()}</span>
+                    <span className="text-xs font-bold text-blue-800/60 mt-1">כניסות (Plays)</span>
+                  </div>
+                  <div className="bg-purple-50 p-3 rounded-xl flex flex-col items-center justify-center text-center">
+                    <span className="text-xl font-black text-purple-600">
+                      {game.totalTimePlayed 
+                        ? (game.totalTimePlayed > 3600 
+                          ? `${(game.totalTimePlayed / 3600).toFixed(1)} ש\`` 
+                          : `${Math.ceil(game.totalTimePlayed / 60)} דק׳`) 
+                        : "0 דק׳"}
+                    </span>
+                    <span className="text-xs font-bold text-purple-800/60 mt-1">זמן כולל</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

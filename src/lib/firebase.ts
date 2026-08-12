@@ -112,16 +112,35 @@ export const getGamesFromFirestore = async (isAdmin: boolean = false): Promise<G
     const snap = await getDocs(q);
     const games: Game[] = [];
     snap.forEach((d) => {
-      const data = d.data() as Game;
+      const data = d.data() as any;
+      // Map old category names to new names for backwards compatibility
+      if (data.category === 'תנ"ך ומורשת') data.category = 'תנ"ך';
+      if (data.category === 'ברכות והלכה') data.category = 'הלכה';
+      if (data.category === 'טריוויה ודעת') data.category = 'טריוויה';
+      if (data.category === 'חשיבה ופאזל') data.category = 'חשיבה';
+      
       games.push({
         id: d.id,
-        ...data
+        ...(data as Game)
       });
     });
     return games;
   } catch (error) {
     console.warn('Error fetching games from Firestore:', error);
     return [];
+  }
+};
+
+export const incrementGameStats = async (gameId: string, playCountInc: number, timePlayedSecs: number): Promise<void> => {
+  if (!gameId) return;
+  try {
+    const gameRef = doc(db, 'games', gameId);
+    await updateDoc(gameRef, {
+      playCount: increment(playCountInc),
+      totalTimePlayed: increment(timePlayedSecs)
+    });
+  } catch (error) {
+    console.warn('Failed to increment game stats in Firestore:', error);
   }
 };
 
@@ -514,6 +533,7 @@ export const subscribeToNewsArticles = (
             commentsCount: data.commentsCount || 0,
             tags: data.tags || [],
             isAdminOnly: data.isAdminOnly || false,
+            isFeatured: data.isFeatured || false,
           };
         });
         callback(list);
@@ -639,7 +659,8 @@ export const addGameCommentToFirestore = async (
  */
 export const likeGameCommentInFirestore = async (
   commentId: string,
-  userId: string
+  userId: string,
+  isLike: boolean = true
 ) => {
   if (isQuotaExceeded || !userId) return;
   try {
@@ -648,12 +669,18 @@ export const likeGameCommentInFirestore = async (
     if (!snap.exists()) return;
     
     const data = snap.data();
-    const likedBy: string[] = data.likedBy || [];
+    let likedBy: string[] = data.likedBy || [];
     
-    if (!likedBy.includes(userId)) {
+    if (isLike && !likedBy.includes(userId)) {
       likedBy.push(userId);
       await setDoc(commentRef, { 
         likes: (data.likes || 0) + 1,
+        likedBy: likedBy
+      }, { merge: true });
+    } else if (!isLike && likedBy.includes(userId)) {
+      likedBy = likedBy.filter(id => id !== userId);
+      await setDoc(commentRef, {
+        likes: Math.max(0, (data.likes || 0) - 1),
         likedBy: likedBy
       }, { merge: true });
     }
@@ -789,6 +816,7 @@ export const updateLeaderboardEntry = async (userProfile: UserProfile) => {
       avatarIcon: userProfile.avatarIcon || '/avatars/shofar.jpg',
       badgeCount,
       playsCount,
+      gameStats: userProfile.gameStats || {},
       updatedAt: new Date().toISOString()
     });
     await setDoc(leaderboardRef, entryData, { merge: true });
@@ -824,7 +852,8 @@ export const subscribeToLeaderboard = (
             avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
             badgeCount: data.badgeCount || 0,
             playsCount: data.playsCount || 0,
-            updatedAt: data.updatedAt
+            updatedAt: data.updatedAt,
+            isCurrentUser: false
           };
         });
         callback(list);
@@ -835,6 +864,58 @@ export const subscribeToLeaderboard = (
     );
   } catch (err) {
     console.error('Error setting up leaderboard snapshot:', err);
+    return () => {};
+  }
+};
+
+/**
+  * Subscribe to a specific game's leaderboard
+  */
+export const subscribeToGameLeaderboard = (
+  gameId: string,
+  callback: (entries: LeaderboardEntry[]) => void,
+  limitCount = 10
+) => {
+  try {
+    const leaderboardRef = collection(db, 'leaderboard');
+    const q = query(leaderboardRef);
+    return onSnapshot(
+      q,
+      (snap) => {
+        let list: LeaderboardEntry[] = [];
+        
+        snap.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          const highScore = data.gameStats?.[gameId]?.highScore || 0;
+          
+          if (highScore > 0) {
+            list.push({
+              id: docSnap.id,
+              userId: docSnap.id,
+              username: data.username || 'שחקן',
+              firstName: data.firstName || '',
+              lastName: data.lastName || '',
+              title: data.title || 'תלמיד חכם',
+              level: data.level || 1,
+              points: highScore,
+              avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
+              badgeCount: data.badgeCount || 0,
+              playsCount: data.gameStats?.[gameId]?.playsCount || 0,
+              isCurrentUser: false
+            });
+          }
+        });
+        
+        // Sort descending locally and slice
+        list.sort((a, b) => b.points - a.points);
+        callback(list.slice(0, limitCount));
+      },
+      (error) => {
+        checkAndHandleQuotaError(error);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up game leaderboard subscription:', error);
     return () => {};
   }
 };

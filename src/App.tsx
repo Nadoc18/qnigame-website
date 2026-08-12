@@ -548,6 +548,7 @@ export default function App() {
           <AdminNewsPage
             articles={newsArticles}
             user={user}
+            allGames={gamesList}
           />
         ) : activeTab === 'leaderboard' ? (
           <Leaderboard 
