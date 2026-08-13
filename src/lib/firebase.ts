@@ -192,8 +192,14 @@ export const enrichGamesWithLiveRatings = async (games: Game[]): Promise<Game[]>
 function cleanFirestoreData<T extends Record<string, any>>(obj: T): Record<string, any> {
   const cleaned: Record<string, any> = {};
   Object.keys(obj).forEach((key) => {
-    if (obj[key] !== undefined) {
-      cleaned[key] = obj[key];
+    const val = obj[key];
+    if (val === undefined) return;
+    if (val !== null && typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date)) {
+      cleaned[key] = cleanFirestoreData(val);
+    } else if (Array.isArray(val)) {
+      cleaned[key] = val.filter(item => item !== undefined);
+    } else {
+      cleaned[key] = val;
     }
   });
   return cleaned;
