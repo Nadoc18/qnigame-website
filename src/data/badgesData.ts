@@ -21,6 +21,7 @@ export const INITIAL_BADGES: Badge[] = [
     progress: 150,
     maxProgress: 500,
     category: 'הלכה וברכות',
+    relatedGameIds: ['brachot', 'brachot_race'],
   },
   {
     id: 'trivia_expert',
@@ -31,6 +32,7 @@ export const INITIAL_BADGES: Badge[] = [
     progress: 4,
     maxProgress: 10,
     category: 'טריוויה ודעת',
+    relatedGameIds: ['trivia'],
   },
   {
     id: 'shabbat_guardian',
@@ -42,6 +44,7 @@ export const INITIAL_BADGES: Badge[] = [
     maxProgress: 3,
     unlockedAt: 'אתמול',
     category: 'שבת וחגים',
+    relatedGameIds: ['shabbat'],
   },
   {
     id: 'menorah_builder',
@@ -52,6 +55,7 @@ export const INITIAL_BADGES: Badge[] = [
     progress: 0,
     maxProgress: 1,
     category: 'חשיבה ופאזל',
+    relatedGameIds: ['menorah_puzzle'],
   },
   {
     id: 'tanach_wordle_hero',
@@ -62,5 +66,16 @@ export const INITIAL_BADGES: Badge[] = [
     progress: 2,
     maxProgress: 5,
     category: 'תנ"ך ומורשת',
+    relatedGameIds: ['tanach_wordle'],
+  },
+  {
+    id: 'shabbat_lover',
+    title: 'אוהב השבת',
+    description: 'שיחקת ב-3 משחקים שונים הקשורים לשבת',
+    icon: 'Heart',
+    unlocked: false,
+    progress: 0,
+    maxProgress: 3,
+    category: 'שבת וחגים',
   },
 ];

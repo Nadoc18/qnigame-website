@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { initializeBadges } from '../utils/BadgeEngine';
 import { UserProfile, Game, getGameThumbnailUrl, getGameThumbnailBgClass } from '../types';
 import { 
   User, 
@@ -366,7 +367,7 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {user.badges.map((badge) => (
+            {initializeBadges(user.badges).map((badge) => (
               <div
                 key={badge.id}
                 className={`p-5 rounded-2xl border transition-all ${

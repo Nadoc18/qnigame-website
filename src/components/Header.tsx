@@ -10,7 +10,8 @@ import {
   Search, 
   UserCheck,
   Trophy,
-  ShieldCheck
+  ShieldCheck,
+  Crown
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { soundManager } from '../utils/audio';
@@ -201,10 +202,18 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
               title={user.isFirebaseUser ? `מחובר בתור ${user.username || user.email}` : 'לחץ להתחברות לחשבון'}
             >
-              <UserCheck className={`w-5 h-5 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
-              <span className="truncate max-w-[150px] lg:max-w-[200px]">
-                {user.isFirebaseUser ? (user.username || 'מחובר') : 'התחברות'}
-              </span>
+              <UserCheck className={`w-5 h-5 shrink-0 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
+              <div className="flex items-center gap-1.5 truncate max-w-[100px] lg:max-w-[150px]">
+                <span className="truncate">
+                  {user.isFirebaseUser ? (user.username && user.username.length > 12 ? user.username.substring(0, 12) + '...' : user.username || 'מחובר') : 'התחברות'}
+                </span>
+                {user.subscriptionTier === 'TIER_2' && (
+                  <Crown className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" />
+                )}
+                {user.subscriptionTier === 'TIER_1' && (
+                  <Crown className="w-4 h-4 text-slate-300 shrink-0" fill="currentColor" />
+                )}
+              </div>
             </button>
 
             {user.isFirebaseUser && (
@@ -255,10 +264,18 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
             title={user.isFirebaseUser ? `מחובר בתור ${user.username || user.email}` : 'לחץ להתחברות לחשבון'}
           >
-            <UserCheck className={`w-3.5 h-3.5 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
-            <span className="truncate max-w-[90px]">
-              {user.isFirebaseUser ? (user.username || 'מחובר') : 'התחברות'}
-            </span>
+            <UserCheck className={`w-4 h-4 shrink-0 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
+            <div className="flex items-center gap-1 truncate max-w-[90px]">
+              <span className="truncate text-xs">
+                {user.isFirebaseUser ? (user.username && user.username.length > 12 ? user.username.substring(0, 12) + '...' : user.username || 'מחובר') : 'התחברות'}
+              </span>
+              {user.subscriptionTier === 'TIER_2' && (
+                <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" />
+              )}
+              {user.subscriptionTier === 'TIER_1' && (
+                <Crown className="w-3.5 h-3.5 text-slate-300 shrink-0" fill="currentColor" />
+              )}
+            </div>
           </button>
 
           <div className="relative w-full">

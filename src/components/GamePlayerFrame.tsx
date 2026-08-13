@@ -20,12 +20,14 @@ import {
   Crown,
   FastForward,
   Film,
-  Trophy
+  Trophy,
+  Lock
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import confetti from 'canvas-confetti';
 import { getDisplayName } from '../utils/format';
 import { generateGameSessionToken } from '../utils/gameTokenService';
+import { getBadgesForGame } from '../utils/BadgeEngine';
 
 import { 
   subscribeToGameComments, 
@@ -33,7 +35,9 @@ import {
   likeGameCommentInFirestore,
   incrementGameStats,
   subscribeToGameLeaderboard,
-  LeaderboardEntry
+  LeaderboardEntry,
+  getGameGlobalData,
+  updateGameGlobalData
 } from '../lib/firebase';
 
 interface GamePlayerFrameProps {
@@ -84,6 +88,8 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   const [gameState, setGameState] = useState<'splash' | 'intro_video' | 'playing'>('splash');
   const videoRef = useRef<HTMLVideoElement>(null);
   const [key, setKey] = useState(0); // To force iframe restart
+
+  const gameBadges = useMemo(() => getBadgesForGame(game, user.badges), [game, user.badges]);
 
   // iOS orientation detection
   const isIOS = useMemo(() => typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)), []);
@@ -181,7 +187,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               id: user.id,
               username: user.username,
               level: user.level,
-              points: user.points,
+              points: user.gameStats?.[targetGameId]?.highScore || 0,
             },
             progress: currentSave,
             gameId: targetGameId,
@@ -196,7 +202,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               id: user.id,
               username: user.username,
               level: user.level,
-              points: user.points,
+              points: user.gameStats?.[targetGameId]?.highScore || 0,
             },
             progress: currentSave,
             gameProgress: currentSave,
@@ -232,6 +238,29 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               savedAt: new Date().toISOString()
             }, '*');
           }
+        }
+      } else if (data.type === 'QNIGAME_LOAD_GLOBAL_DATA') {
+        if (targetWin && targetWin.postMessage) {
+          getGameGlobalData(targetGameId).then((globalData) => {
+            targetWin.postMessage({
+              type: 'QNIGAME_GLOBAL_DATA_LOADED',
+              success: true,
+              gameId: targetGameId,
+              data: globalData
+            }, '*');
+          }).catch(console.error);
+        }
+      } else if (data.type === 'QNIGAME_SAVE_GLOBAL_DATA') {
+        if (data.data !== undefined) {
+          updateGameGlobalData(targetGameId, data.data).then(() => {
+            if (targetWin && targetWin.postMessage) {
+              targetWin.postMessage({
+                type: 'QNIGAME_GLOBAL_DATA_SAVED',
+                success: true,
+                gameId: targetGameId
+              }, '*');
+            }
+          }).catch(console.error);
         }
       }
     };
@@ -279,9 +308,9 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
   // Generate combined HTML srcDoc for iframe
   const combinedHtml = useMemo(() => {
-    const htmlFile = game.files.find(f => f.name.endsWith('.html'))?.content || '';
-    const cssFile = game.files.find(f => f.name.endsWith('.css'))?.content || '';
-    const jsFile = game.files.find(f => f.name.endsWith('.js'))?.content || '';
+    const htmlFile = (game.files || []).find(f => f.name.endsWith('.html'))?.content || '';
+    const cssFile = (game.files || []).find(f => f.name.endsWith('.css'))?.content || '';
+    const jsFile = (game.files || []).find(f => f.name.endsWith('.js'))?.content || '';
 
     // WASM instantiateStreaming fallback polyfill for Unity WebGL MIME type errors
     const wasmPolyfill = `<script>
@@ -506,13 +535,25 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {getGameThumbnailUrl(game) && (
+              <div className="flex w-20 h-20 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 p-0.5 shadow-md border border-slate-200 shrink-0 relative sm:hover:scale-[2.5] sm:hover:z-50 sm:origin-top-left transition-all duration-300 ease-out cursor-pointer hover:shadow-2xl">
+                <div className="w-full h-full rounded-[14px] overflow-hidden bg-white">
+                  <img 
+                    src={getGameThumbnailUrl(game)} 
+                    alt={game.title} 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                  />
+                </div>
+              </div>
+            )}
             <button
               onClick={() => { soundManager.playClick(); onToggleFavorite(game.id); }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-bold border transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-bold border transition-all ${
                 isFavorite
-                  ? 'bg-rose-50 border-rose-200 text-rose-600'
-                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:text-[#2fab65]'
+                  ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-sm'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-[#2fab65] hover:bg-slate-100 shadow-sm'
               }`}
             >
               <Heart className={`w-4 h-4 ${isFavorite ? 'fill-rose-500 text-rose-500' : ''}`} />
@@ -758,7 +799,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               <h3>הוראות משחק ומקשים</h3>
             </div>
             <ul className="space-y-2.5 text-sm text-slate-700 leading-relaxed font-medium">
-              {game.instructions.map((inst, idx) => (
+              {(game.instructions || []).map((inst, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
                   <span className="w-5 h-5 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-800 text-xs flex items-center justify-center shrink-0 font-mono font-black">
                     {idx + 1}
@@ -819,6 +860,63 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               </div>
             )}
           </div>
+
+          {/* Game Achievements (Badges) */}
+          {gameBadges.length > 0 && (
+            <div className="bg-slate-50/80 border border-slate-200 p-5 rounded-2xl space-y-3 shadow-sm">
+              <div className="flex items-center gap-2 text-slate-800 font-black text-sm mb-2 border-b border-slate-200 pb-2">
+                <Award className="w-4 h-4 text-emerald-500" />
+                <h3>הישגים במשחק זה</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-3">
+                {gameBadges.map((badge) => (
+                  <div 
+                    key={badge.id} 
+                    className={`flex items-start gap-3 p-3 rounded-xl border ${
+                      badge.unlocked 
+                        ? 'bg-emerald-50/50 border-emerald-200 shadow-sm' 
+                        : 'bg-white border-slate-200 shadow-sm opacity-80 hover:opacity-100 transition-opacity'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      badge.unlocked
+                        ? 'bg-yellow-400 text-indigo-950 shadow-inner text-xl'
+                        : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      {badge.unlocked ? '🏆' : <Lock className="w-4 h-4" />}
+                    </div>
+
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-black text-slate-900 text-sm">{badge.title}</h4>
+                        {badge.unlocked && (
+                          <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded-full font-extrabold">
+                            הושג
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-tight font-medium">{badge.description}</p>
+                      
+                      {/* Progress Bar */}
+                      <div className="pt-1.5 space-y-1">
+                        <div className="flex justify-between text-[9px] text-slate-500 font-bold">
+                          <span>התקדמות</span>
+                          <span>{badge.progress} / {badge.maxProgress}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${badge.unlocked ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                            style={{ width: `${Math.min(100, (badge.progress / badge.maxProgress) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
 

@@ -7,6 +7,8 @@ export type GameCategory =
   | 'חשיבה'
   | 'טריוויה';
 
+export type SubscriptionTier = 'FREE' | 'TIER_1' | 'TIER_2';
+
 export interface GameFile {
   name: string;
   language: 'html' | 'css' | 'javascript';
@@ -51,6 +53,7 @@ export interface Game {
   isNew?: boolean;
   requiresAuth?: boolean;
   tokenSupported?: boolean;
+  accessLevel?: SubscriptionTier;
   isAdminOnly?: boolean;
 }
 
@@ -138,6 +141,7 @@ export interface Badge {
   maxProgress: number;
   unlockedAt?: string;
   category: string;
+  relatedGameIds?: string[];
 }
 
 export interface GameStat {
@@ -155,6 +159,7 @@ export interface UserProfile {
   username: string;
   firstName?: string;
   lastName?: string;
+  subscriptionTier?: SubscriptionTier;
   age?: number;
   title: string;
   level: number;
@@ -171,6 +176,7 @@ export interface UserProfile {
   shabbatModeEnabled?: boolean;
   soundEnabled?: boolean;
   isAdmin?: boolean;
+  isVip?: boolean;
 }
 
 export interface NewsArticle {

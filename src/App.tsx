@@ -13,23 +13,26 @@ import { AccountProfile } from './components/AccountProfile';
 import { NewsPage } from './components/NewsPage';
 import { AdminNewsPage } from './components/AdminNewsPage';
 import { MaintenancePage } from './components/MaintenancePage';
+import { FirebaseAuthModal } from './components/FirebaseAuthModal';
+import { ResetPasswordPage } from './components/ResetPasswordPage';
+import { VerifyEmailPage } from './components/VerifyEmailPage';
+import { PremiumModal } from './components/PremiumModal';
 
 import { GAMES_LIST } from './data/gamesData';
 import { NEWS_ARTICLES } from './data/newsData';
 import { INITIAL_BADGES } from './data/badgesData';
-import { Game, GameCategory, UserProfile, NewsArticle } from './types';
+import { Game, GameCategory, UserProfile, NewsArticle, SubscriptionTier } from './types';
 import { soundManager } from './utils/audio';
 import { cloudGamesService } from './services/cloudGamesService';
-import { FirebaseAuthModal } from './components/FirebaseAuthModal';
 import { auth, syncUserProfile, saveUserProfileToFirestore, saveGameProgressToFirestore, subscribeToUserProfile, updateLeaderboardEntry, subscribeToNewsArticles, subscribeToGlobalSettings } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 import { getShabbatTimes, ShabbatInfo } from './utils/shabbat';
 import { getLevelDetails } from './utils/levels';
+import { processBadgeEvent, BadgeEvent, initializeBadges } from './utils/BadgeEngine';
 import { LevelUpModal } from './components/LevelUpModal';
 import { ShabbatRestScreen } from './components/ShabbatRestScreen';
 import { Leaderboard } from './components/Leaderboard';
-import { ResetPasswordPage } from './components/ResetPasswordPage';
 
 const INITIAL_USER: UserProfile = {
   id: 'user-guest',
@@ -59,21 +62,30 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<GameCategory>('הכל');
   const [soundOn, setSoundOn] = useState(true);
 
+  // Badge Notification State
+  const [unlockedBadge, setUnlockedBadge] = useState<any | null>(null);
+
   // Automated Shabbat detection state
   const [shabbatInfo, setShabbatInfo] = useState<ShabbatInfo | null>(null);
 
   // Games library state
   const [gamesList, setGamesList] = useState<Game[]>(GAMES_LIST);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+  const [requiredPremiumTier, setRequiredPremiumTier] = useState<SubscriptionTier | undefined>(undefined);
+  const [authCustomMsg, setAuthCustomMsg] = useState<string | undefined>(undefined);
+  const [pendingGameId, setPendingGameId] = useState<string | null>(null);
   
   // News State
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>(NEWS_ARTICLES);
 
   // Global Settings State
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean | null>(null);
+  const [isMonetizationEnabled, setIsMonetizationEnabled] = useState<boolean>(true);
 
   // Password Reset Interception State
   const [resetOobCode, setResetOobCode] = useState<string | null>(null);
+  const [verifyEmailOobCode, setVerifyEmailOobCode] = useState<string | null>(null);
 
   // Load Games from Cloud
 
@@ -92,7 +104,7 @@ export default function App() {
     return INITIAL_USER;
   });
 
-  // Check URL for custom password reset code on mount
+  // Check URL for custom password reset code or email verification on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
@@ -100,6 +112,8 @@ export default function App() {
       const oobCode = urlParams.get('oobCode');
       if (mode === 'resetPassword' && oobCode) {
         setResetOobCode(oobCode);
+      } else if (mode === 'verifyEmail' && oobCode) {
+        setVerifyEmailOobCode(oobCode);
       }
     }
   }, []);
@@ -110,7 +124,15 @@ export default function App() {
       try {
         const result = await cloudGamesService.fetchGamesFromCloud(user.isAdmin || false);
         if (result.games && result.games.length > 0) {
-          setGamesList(result.games);
+          // Temporary merge for local testing: inject accessLevel from gamesData.ts
+          const mergedGames = result.games.map(cloudGame => {
+            const localGame = GAMES_LIST.find(g => g.id === cloudGame.id);
+            return {
+              ...cloudGame,
+              accessLevel: localGame?.accessLevel || cloudGame.accessLevel
+            };
+          });
+          setGamesList(mergedGames);
         }
       } catch (err) {
         console.error('Error loading games:', err);
@@ -134,6 +156,7 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = subscribeToGlobalSettings((settings) => {
       setIsMaintenanceMode(settings.isMaintenanceMode || false);
+      setIsMonetizationEnabled(settings.isMonetizationEnabled !== false);
     });
     return () => unsubscribe();
   }, []);
@@ -185,7 +208,7 @@ export default function App() {
     let unsubSnapshot: (() => void) | undefined;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
+      if (fbUser && fbUser.emailVerified) {
         try {
           const syncedProfile = await syncUserProfile(fbUser, INITIAL_USER);
           setUser({
@@ -283,12 +306,45 @@ export default function App() {
       };
 
       const newHighScore = Math.max(currentStat.highScore, score);
-      const earnedPoints = Math.max(10, Math.floor(score / 5));
+      const diff = score - currentStat.highScore;
+      const earnedPoints = diff > 0 ? diff : 0;
+      
       const newPoints = prev.points + earnedPoints;
-      const newCoins = prev.coins + Math.max(5, Math.floor(score / 10));
+      const newCoins = prev.coins; // Coins feature removed as per user request
       const lvlDetails = getLevelDetails(newPoints);
       const newLevel = lvlDetails.level;
       const newTitle = lvlDetails.title;
+      
+      const gameInfo = gamesList.find((g) => g.id === gameId);
+
+      const events: BadgeEvent[] = [
+        { type: 'GAME_PLAYED', gameId, gameTags: gameInfo?.tags },
+        { type: 'HIGH_SCORE', gameId, value: score, gameTags: gameInfo?.tags }
+      ];
+
+      // Temporary specific mappings based on gameId until Unity sends explicit events
+      if (gameId === 'trivia') events.push({ type: 'TRIVIA_STREAK', gameId, value: Math.floor(score / 10) }); // Assume 1 streak = 10 pts
+      if (gameId === 'shabbat') events.push({ type: 'SHABBAT_COMPLETED', gameId });
+      if (gameId === 'menorah_puzzle') events.push({ type: 'MENORAH_SOLVED', gameId, value: 3 }); // Hard mode assumed
+      if (gameId === 'tanach_wordle') events.push({ type: 'WORDLE_WON', gameId });
+
+      let currentBadges = prev.badges || [];
+      let allNewlyUnlocked: any[] = [];
+
+      events.forEach(event => {
+        const result = processBadgeEvent({ ...prev, badges: currentBadges }, event);
+        currentBadges = result.updatedBadges;
+        if (result.newlyUnlocked.length > 0) {
+          allNewlyUnlocked.push(...result.newlyUnlocked);
+        }
+      });
+
+      if (allNewlyUnlocked.length > 0) {
+        // Just show the first one in the toast if multiple unlocked at once
+        setUnlockedBadge(allNewlyUnlocked[0]);
+        // Auto-hide toast after 4s
+        setTimeout(() => setUnlockedBadge(null), 4000);
+      }
 
       const nextUser = {
         ...prev,
@@ -296,6 +352,7 @@ export default function App() {
         coins: newCoins,
         level: newLevel,
         title: newTitle,
+        badges: currentBadges,
         gameStats: {
           ...prev.gameStats,
           [gameId]: {
@@ -335,26 +392,57 @@ export default function App() {
     });
   };
 
-  const [pendingGameId, setPendingGameId] = useState<string | null>(null);
-  const [authCustomMsg, setAuthCustomMsg] = useState<string | undefined>(undefined);
-
   const handleSelectGame = (gameId: string) => {
+    const game = gamesList.find(g => g.id === gameId);
+    if (!game) return;
+
     if (!user.isFirebaseUser) {
       setPendingGameId(gameId);
       setAuthCustomMsg('כדי לשחק ולשמור את הניקוד וההישגים שלך, יש להתחבר לחשבון שחקן');
       setIsAuthModalOpen(true);
       return;
     }
+
+    if (game.accessLevel && game.accessLevel !== 'FREE') {
+      // Bypass check if Monetization is OFF globally, OR if User is Admin, OR if User is VIP
+      const isBypassed = !isMonetizationEnabled || user.isAdmin || user.isVip;
+
+      if (!isBypassed) {
+        const tier = user.subscriptionTier || 'FREE';
+        let hasAccess = false;
+        if (tier === 'TIER_2') hasAccess = true;
+        if (tier === 'TIER_1' && game.accessLevel === 'TIER_1') hasAccess = true;
+
+        if (!hasAccess) {
+          setRequiredPremiumTier(game.accessLevel);
+          setIsPremiumModalOpen(true);
+          return;
+        }
+      }
+    }
+
     setSelectedGameId(gameId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = async () => {
+    if (auth.currentUser && auth.currentUser.emailVerified) {
+      try {
+        const syncedProfile = await syncUserProfile(auth.currentUser, INITIAL_USER);
+        setUser({
+          ...syncedProfile,
+          isFirebaseUser: true,
+        });
+      } catch (err) {
+        console.error('Manual sync failed:', err);
+      }
+    }
+
     if (pendingGameId) {
-      setSelectedGameId(pendingGameId);
+      const gameIdToLaunch = pendingGameId;
       setPendingGameId(null);
       setAuthCustomMsg(undefined);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      handleSelectGame(gameIdToLaunch); // re-evaluate access after login
     }
   };
 
@@ -366,10 +454,10 @@ export default function App() {
     }));
     setIsAuthModalOpen(false);
     if (pendingGameId) {
-      setSelectedGameId(pendingGameId);
+      const gameIdToLaunch = pendingGameId;
       setPendingGameId(null);
       setAuthCustomMsg(undefined);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      handleSelectGame(gameIdToLaunch); // re-evaluate access after mock login
     }
   };
 
@@ -415,6 +503,19 @@ export default function App() {
         }}
         onCancel={() => {
           setResetOobCode(null);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }}
+      />
+    );
+  }
+
+  // Intercept normal rendering for email verification page
+  if (verifyEmailOobCode) {
+    return (
+      <VerifyEmailPage 
+        oobCode={verifyEmailOobCode} 
+        onContinue={() => {
+          setVerifyEmailOobCode(null);
           window.history.replaceState({}, document.title, window.location.pathname);
         }}
       />
@@ -569,6 +670,42 @@ export default function App() {
 
       {/* Footer */}
       <Footer shabbatInfo={shabbatInfo} />
+
+      {/* Badge Notification Toast */}
+      {unlockedBadge && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] animate-bounce-in">
+          <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-4 rounded-2xl shadow-2xl border-2 border-amber-300 flex items-center gap-4">
+            <div className="text-4xl animate-pulse">🏆</div>
+            <div>
+              <div className="text-amber-100 text-sm font-bold">הישג חדש נפתח!</div>
+              <div className="font-black text-xl">{unlockedBadge.title}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Premium Subscription Modal */}
+      <PremiumModal
+        isOpen={isPremiumModalOpen}
+        onClose={() => {
+          setIsPremiumModalOpen(false);
+          setRequiredPremiumTier(undefined);
+        }}
+        user={user}
+        requiredTier={requiredPremiumTier}
+        onMockPaymentSuccess={(tier) => {
+          setUser(prev => ({ ...prev, subscriptionTier: tier }));
+          setIsPremiumModalOpen(false);
+          setRequiredPremiumTier(undefined);
+          
+          // If they were trying to access a game, launch it now!
+          if (pendingGameId) {
+            const gameIdToLaunch = pendingGameId;
+            setPendingGameId(null);
+            handleSelectGame(gameIdToLaunch);
+          }
+        }}
+      />
     </div>
   );
 }

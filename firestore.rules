@@ -3,14 +3,25 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // User profile document rules: Private to the account owner only
+    // User profile document rules: Private to the account owner, but Admins can read
     match /users/{userId} {
-      allow read, create, update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if false;
+      allow read: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+      
+      // Users can create their own profile, but cannot make themselves admin
+      allow create: if request.auth != null && request.auth.uid == userId && 
+                    (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
+                    
+      // Users can update their own profile, but cannot modify the isAdmin field (unless they are already an admin modifying someone else's, or their own)
+      allow update: if request.auth != null && (
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true) || 
+        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'disabled']))
+      );
+      
+      allow delete: if false; // Deletion is handled by Cloud Functions
 
       // Subcollections or stats
       match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
       }
     }
 

@@ -576,6 +576,52 @@ export const toggleNewsArticleLike = async (articleId: string, userId: string) =
 /**
  * Admin: Create a new news article
  */
+/**
+ * Admin: Get all users from Firestore
+ */
+export const getAllUsers = async (): Promise<UserProfile[]> => {
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, limit(1000)); 
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({
+      ...doc.data(),
+      userId: doc.id
+    })) as unknown as UserProfile[];
+  } catch (error) {
+    console.error('Error fetching all users:', error);
+    throw error;
+  }
+};
+
+/**
+ * Admin: Toggle user status (disable/enable)
+ */
+export const toggleUserStatus = async (targetUid: string, disabled: boolean): Promise<void> => {
+  try {
+    const functions = getFunctions();
+    const adminToggleUserStatus = httpsCallable(functions, 'adminToggleUserStatus');
+    await adminToggleUserStatus({ targetUid, disabled });
+  } catch (error) {
+    console.error('Error toggling user status:', error);
+    throw error;
+  }
+};
+
+/**
+ * Admin: Delete user account
+ */
+export const deleteUserAccount = async (targetUid: string): Promise<void> => {
+  try {
+    const functions = getFunctions();
+    const adminDeleteUser = httpsCallable(functions, 'adminDeleteUser');
+    await adminDeleteUser({ targetUid });
+  } catch (error) {
+    console.error('Error deleting user account:', error);
+    throw error;
+  }
+};
+
 export const createNewsArticle = async (articleData: Partial<NewsArticle>) => {
   if (isQuotaExceeded) throw new Error("Quota exceeded");
   const newsRef = collection(db, 'newsArticles');
@@ -610,6 +656,38 @@ export const deleteNewsArticle = async (articleId: string) => {
   if (!articleId || isQuotaExceeded) throw new Error("Invalid ID or Quota exceeded");
   const articleRef = doc(db, 'newsArticles', articleId);
   await deleteDoc(articleRef);
+};
+
+// ==========================================
+// ADMIN: GAME MANAGEMENT
+// ==========================================
+
+export const createGame = async (gameData: Partial<Game>) => {
+  if (isQuotaExceeded) throw new Error("Quota exceeded");
+  const gamesRef = collection(db, 'games');
+  const docRef = doc(gamesRef);
+  const newGame = {
+    ...gameData,
+    id: docRef.id,
+    plays: 0,
+    rating: 5,
+    comments: [],
+  };
+  await setDoc(docRef, newGame);
+  return newGame;
+};
+
+export const updateGame = async (gameId: string, gameData: Partial<Game>) => {
+  if (!gameId || isQuotaExceeded) throw new Error("Invalid ID or Quota exceeded");
+  const gameRef = doc(db, 'games', gameId);
+  const cleanData = Object.fromEntries(Object.entries(gameData).filter(([_, v]) => v !== undefined));
+  await updateDoc(gameRef, cleanData);
+};
+
+export const deleteGame = async (gameId: string) => {
+  if (!gameId || isQuotaExceeded) throw new Error("Invalid ID or Quota exceeded");
+  const gameRef = doc(db, 'games', gameId);
+  await deleteDoc(gameRef);
 };
 
 
@@ -699,6 +777,42 @@ let progressSaveTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 /**
  * Save generic progressData JSON for a given userId and gameId in Firestore
  * (Debounced & optimized to single doc write)
+ */
+/**
+ * Load global shared JSON data for a specific game (e.g. shared dictionary)
+ */
+export const getGameGlobalData = async (gameId: string): Promise<any> => {
+  if (!gameId || isQuotaExceeded) return null;
+  try {
+    const docRef = doc(db, 'gameGlobalData', gameId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data().data || null;
+    }
+    return null;
+  } catch (error) {
+    if (checkAndHandleQuotaError(error)) return null;
+    console.error('Error fetching global game data:', error);
+    return null;
+  }
+};
+
+/**
+ * Update global shared JSON data for a specific game
+ */
+export const updateGameGlobalData = async (gameId: string, data: any): Promise<void> => {
+  if (!gameId || isQuotaExceeded) return;
+  try {
+    const docRef = doc(db, 'gameGlobalData', gameId);
+    await setDoc(docRef, { data, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (error) {
+    if (checkAndHandleQuotaError(error)) return;
+    console.error('Error updating global game data:', error);
+  }
+};
+
+/**
+ * Save user game progress data (per user JSON)
  */
 export const saveGameProgressToFirestore = async (
   userId: string,
@@ -891,7 +1005,6 @@ export const subscribeToGameLeaderboard = (
           if (highScore > 0) {
             list.push({
               id: docSnap.id,
-              userId: docSnap.id,
               username: data.username || 'שחקן',
               firstName: data.firstName || '',
               lastName: data.lastName || '',
@@ -900,8 +1013,7 @@ export const subscribeToGameLeaderboard = (
               points: highScore,
               avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
               badgeCount: data.badgeCount || 0,
-              playsCount: data.gameStats?.[gameId]?.playsCount || 0,
-              isCurrentUser: false
+              playsCount: data.gameStats?.[gameId]?.playsCount || 0
             });
           }
         });
@@ -993,9 +1105,9 @@ export const migrateAvatarsInDB = async () => {
 /**
  * Subscribe to global settings (like maintenance mode)
  */
-export const subscribeToGlobalSettings = (callback: (settings: { isMaintenanceMode?: boolean }) => void) => {
+export const subscribeToGlobalSettings = (callback: (settings: { isMaintenanceMode?: boolean, isMonetizationEnabled?: boolean }) => void) => {
   if (isQuotaExceeded) {
-    callback({ isMaintenanceMode: false });
+    callback({ isMaintenanceMode: false, isMonetizationEnabled: true });
     return () => {};
   }
   try {
@@ -1006,7 +1118,7 @@ export const subscribeToGlobalSettings = (callback: (settings: { isMaintenanceMo
       settingsRef,
       (docSnap) => {
         if (docSnap.exists()) {
-          callback(docSnap.data() as { isMaintenanceMode?: boolean });
+          callback(docSnap.data() as { isMaintenanceMode?: boolean, isMonetizationEnabled?: boolean });
         } else {
           callback({});
         }
@@ -1014,12 +1126,12 @@ export const subscribeToGlobalSettings = (callback: (settings: { isMaintenanceMo
       (error) => {
         checkAndHandleQuotaError(error);
         console.error('Settings snapshot error:', error);
-        callback({ isMaintenanceMode: false }); // Unblock the loading screen on error
+        callback({ isMaintenanceMode: false, isMonetizationEnabled: true }); // Unblock on error
       }
     );
   } catch (err) {
     console.error('Error setting up settings snapshot:', err);
-    callback({ isMaintenanceMode: false });
+    callback({ isMaintenanceMode: false, isMonetizationEnabled: true });
     return () => {};
   }
 };
@@ -1029,17 +1141,45 @@ export const subscribeToGlobalSettings = (callback: (settings: { isMaintenanceMo
  */
 export const setMaintenanceMode = async (isEnabled: boolean) => {
   if (isQuotaExceeded) return;
-  // We use newsArticles collection to bypass the need to update Firebase Security Rules
   const settingsRef = doc(db, 'newsArticles', '_SYSTEM_SETTINGS_');
   try {
     await setDoc(settingsRef, { 
       isMaintenanceMode: isEnabled,
-      isAdminOnly: false, // Required so non-admins can read this document without security rules throwing an error
-      // We do NOT add a createdAt field, so this document will be naturally filtered out
-      // from the news articles list (which relies on orderBy('createdAt', 'desc'))
+      isAdminOnly: false,
     }, { merge: true });
   } catch (err) {
     console.error('Error updating maintenance mode:', err);
     throw err;
+  }
+};
+
+/**
+ * Update global monetization mode
+ */
+export const setMonetizationMode = async (isEnabled: boolean) => {
+  if (isQuotaExceeded) return;
+  const settingsRef = doc(db, 'newsArticles', '_SYSTEM_SETTINGS_');
+  try {
+    await setDoc(settingsRef, { 
+      isMonetizationEnabled: isEnabled,
+      isAdminOnly: false,
+    }, { merge: true });
+  } catch (err) {
+    console.error('Error updating monetization mode:', err);
+    throw err;
+  }
+};
+
+/**
+ * Admin: Toggle user VIP status (disable/enable free access)
+ */
+export const adminToggleUserVipStatus = async (targetUid: string, isVip: boolean): Promise<void> => {
+  try {
+    const functions = getFunctions();
+    const toggleVip = httpsCallable(functions, 'adminToggleUserVipStatus');
+    await toggleVip({ targetUid, isVip });
+  } catch (error) {
+    console.error('Error toggling VIP status:', error);
+    throw error;
   }
 };

@@ -23,8 +23,10 @@ import {
   logout, 
   resetPassword,
   saveUserProfileToFirestore,
-  syncUserProfile
+  syncUserProfile,
+  auth
 } from '../lib/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { soundManager } from '../utils/audio';
 import { UserProfile } from '../types';
 import confetti from 'canvas-confetti';
@@ -61,6 +63,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [isOnboarding, setIsOnboarding] = useState(false);
+  const [isAwaitingVerification, setIsAwaitingVerification] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -97,8 +100,18 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
     setSelectedAvatar('/avatars/shofar.png');
     setAge(10);
     setIsOnboarding(false);
+    setIsAwaitingVerification(false);
     setErrorMsg(null);
     setSuccessMsg(null);
+  };
+
+  const handleSuccessContinue = () => {
+    setIsOnboarding(false);
+    onClose();
+    if (onAuthSuccess && successMsg !== 'התנתקת בהצלחה.' && mode !== 'forgot') {
+      onAuthSuccess();
+    }
+    setTimeout(() => setSuccessMsg(null), 300); // clear after animation closes
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -110,12 +123,12 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
     try {
       if (mode === 'login') {
         await loginWithEmail(email, password);
+        if (auth.currentUser && !auth.currentUser.emailVerified) {
+          setIsAwaitingVerification(true);
+          return;
+        }
         soundManager.playCorrect();
         setSuccessMsg('התחברת בהצלחה! הישגייך נשמרו בחשבונך.');
-        setTimeout(() => {
-          onClose();
-          if (onAuthSuccess) onAuthSuccess();
-        }, 1200);
       } else if (mode === 'register') {
         if (!email || !password || !confirmPassword) {
           throw new Error('אנא מלא את כל השדות.');
@@ -128,8 +141,19 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
         }
         await registerWithEmail(email, password);
         soundManager.playCorrect();
-        // Switch to Onboarding Profile Step for initial registration
-        setIsOnboarding(true);
+        
+        // Immediately send verification email
+        if (auth.currentUser) {
+          try {
+            const functions = getFunctions();
+            const sendCustomVerificationEmail = httpsCallable(functions, 'sendCustomVerificationEmail');
+            await sendCustomVerificationEmail({ email: auth.currentUser.email });
+          } catch (e) {
+            console.error('Failed to send verification email', e);
+          }
+        }
+        
+        setIsAwaitingVerification(true);
       } else if (mode === 'forgot') {
         if (!email) throw new Error('אנא הזן כתובת אימייל.');
         await resetPassword(email);
@@ -154,6 +178,34 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
         message = err.message;
       }
       setErrorMsg(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckVerification = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      if (auth.currentUser) {
+        await auth.currentUser.reload();
+        if (auth.currentUser.emailVerified) {
+          soundManager.playCorrect();
+          setIsAwaitingVerification(false);
+          // Only show onboarding if they haven't set a firstName yet
+          if (!currentUser.firstName) {
+            setIsOnboarding(true);
+          } else {
+            setSuccessMsg('האימייל אומת בהצלחה! תודה רבה.');
+          }
+        } else {
+          soundManager.playWrong();
+          setErrorMsg('האימייל טרם אומת. אנא בדוק שוב את תיבת המייל שלך ולחץ על הקישור.');
+        }
+      }
+    } catch (error) {
+      console.error('Verification Check Error:', error);
+      setErrorMsg('אירעה שגיאה בבדיקת אימות האימייל.');
     } finally {
       setLoading(false);
     }
@@ -185,13 +237,8 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       };
 
       await saveUserProfileToFirestore(updatedProfile);
+      
       setSuccessMsg('פרופיל השחקן שלך הוגדר בהצלחה! 🎉');
-
-      setTimeout(() => {
-        setIsOnboarding(false);
-        onClose();
-        if (onAuthSuccess) onAuthSuccess();
-      }, 1200);
     } catch (err: any) {
       console.error('Save Onboarding Error:', err);
       setErrorMsg('אירעה שגיאה בשמירת הפרופיל.');
@@ -215,10 +262,6 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
           setSuccessMsg('נא להשלים את פרטי השחקן שלך (שם, שם משפחה וגיל)');
         } else {
           setSuccessMsg('התחברת בהצלחה! הישגייך נשמרו בחשבונך.');
-          setTimeout(() => {
-            onClose();
-            if (onAuthSuccess) onAuthSuccess();
-          }, 1200);
         }
       }
     } catch (err: any) {
@@ -236,9 +279,6 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       await logout();
       soundManager.playClick();
       setSuccessMsg('התנתקת בהצלחה.');
-      setTimeout(() => {
-        onClose();
-      }, 1000);
     } catch (err) {
       console.error('Logout Error:', err);
     } finally {
@@ -275,8 +315,68 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
           </p>
         </div>
 
-        {/* If in Onboarding Profile Mode */}
-        {isOnboarding ? (
+        <div className="p-8">
+          {successMsg ? (
+            <div className="text-center space-y-6 animate-bounce-in">
+              <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-emerald-100">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900">מעולה!</h2>
+              <p className="text-slate-600 font-medium text-lg leading-relaxed">
+                {successMsg}
+              </p>
+              <button
+                onClick={handleSuccessContinue}
+                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white p-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02]"
+              >
+                <span>המשך</span>
+              </button>
+            </div>
+          ) : isAwaitingVerification ? (
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-10 h-10 text-indigo-600" />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900">אימות אימייל נדרש</h2>
+              <p className="text-slate-600 text-sm leading-relaxed max-w-sm mx-auto">
+                שלחנו לך הודעת דוא"ל לכתובת <strong>{email || auth.currentUser?.email}</strong>. 
+                אנא לחץ על הקישור בהודעה כדי לאמת את חשבונך, ולאחר מכן חזור לכאן.
+              </p>
+              
+              {errorMsg && (
+                <div className="p-4 bg-red-50 text-red-700 text-sm rounded-xl flex items-center justify-center gap-2 border border-red-100 font-medium">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              <button
+                onClick={handleCheckVerification}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white p-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 disabled:opacity-70 transition-all hover:scale-[1.02]"
+              >
+                {loading ? (
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span>אימתתי את האימייל שלי</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsAwaitingVerification(false);
+                  logout(); // log them out explicitly so they can start over
+                  resetForm();
+                }}
+                className="text-slate-500 hover:text-slate-800 text-sm font-medium"
+              >
+                חזור אחורה / נסה שוב
+              </button>
+            </div>
+        ) : isOnboarding ? (
           <form onSubmit={handleSaveOnboarding} className="space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-center text-xs text-amber-900 font-medium">
               <span className="font-bold block mb-1">🔒 שמירה על פרטיות מלאה!</span>
@@ -287,13 +387,6 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
               <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-bold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{errorMsg}</span>
-              </div>
-            )}
-
-            {successMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                <span>{successMsg}</span>
               </div>
             )}
 
@@ -427,12 +520,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
               </div>
             )}
 
-            {successMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                <span>{successMsg}</span>
-              </div>
-            )}
+            {/* Removed redundant success banner */}
 
             {/* Google Quick Login Button */}
             {mode !== 'forgot' && (
@@ -610,6 +698,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
           </div>
         )}
 
+      </div>
       </div>
     </div>
   );
