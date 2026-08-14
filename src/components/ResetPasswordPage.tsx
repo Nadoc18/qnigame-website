@@ -40,7 +40,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ oobCode, o
       onSuccess();
     } catch (err: any) {
       soundManager.playWrong();
-      console.error('Password reset error:', err);
+      // silent
       if (err.code === 'auth/expired-action-code') {
         setErrorMsg('פג תוקפו של קישור זה. אנא בקש קישור חדש.');
       } else if (err.code === 'auth/invalid-action-code') {

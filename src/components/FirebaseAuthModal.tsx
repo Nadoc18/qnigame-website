@@ -149,7 +149,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
             const sendCustomVerificationEmail = httpsCallable(functions, 'sendCustomVerificationEmail');
             await sendCustomVerificationEmail({ email: auth.currentUser.email });
           } catch (e) {
-            console.error('Failed to send verification email', e);
+            // silent
           }
         }
         
@@ -162,7 +162,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       }
     } catch (err: any) {
       soundManager.playWrong();
-      console.error('Auth Error:', err);
+      // silent
       let message = 'אירעה שגיאה. אנא נסה שנית.';
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
         message = 'כתובת האימייל או הסיסמה אינם נכונים.';
@@ -204,7 +204,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
         }
       }
     } catch (error) {
-      console.error('Verification Check Error:', error);
+      // silent
       setErrorMsg('אירעה שגיאה בבדיקת אימות האימייל.');
     } finally {
       setLoading(false);
@@ -240,7 +240,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       
       setSuccessMsg('פרופיל השחקן שלך הוגדר בהצלחה! 🎉');
     } catch (err: any) {
-      console.error('Save Onboarding Error:', err);
+      // silent
       setErrorMsg('אירעה שגיאה בשמירת הפרופיל.');
     } finally {
       setLoading(false);
@@ -266,7 +266,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       }
     } catch (err: any) {
       soundManager.playWrong();
-      console.error('Google Login Error:', err);
+      // silent
       setErrorMsg('התחברות באמצעות גוגל בוטלה או נכשלה.');
     } finally {
       setLoading(false);
@@ -280,7 +280,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       soundManager.playClick();
       setSuccessMsg('התנתקת בהצלחה.');
     } catch (err) {
-      console.error('Logout Error:', err);
+      // silent
     } finally {
       setLoading(false);
     }

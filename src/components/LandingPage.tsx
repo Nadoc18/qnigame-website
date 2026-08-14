@@ -20,6 +20,7 @@ import {
   Zap,
   Lock,
   ThumbsUp,
+  X,
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import { LogoShowcaseCard, LOGO_SRC, FALLBACK_LOGO_SRC } from './QnigameLogo';
@@ -93,6 +94,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [selectedAge, setSelectedAge] = useState<string>('הכל');
   const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'new' | 'play_time'>('popular');
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [selectedGameModal, setSelectedGameModal] = useState<Game | null>(null);
 
   // Auto-filter by user age when it loads
   useEffect(() => {
@@ -238,7 +240,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="lg:col-span-5 space-y-6">
             <LogoShowcaseCard news={news} onOpenNews={onOpenNews} />
 
-            <div className="relative group bg-white/95 border-2 border-[#c99719] hover:border-[#e5af24] p-5 rounded-3xl shadow-2xl transition-all overflow-hidden">
+            <div 
+              onClick={() => { soundManager.playClick(); setSelectedGameModal(featuredGame); }}
+              className="relative group bg-white/95 border-2 border-[#c99719] hover:border-[#e5af24] rounded-3xl shadow-2xl transition-all overflow-hidden cursor-pointer"
+            >
               {featuredGame.isNew && (
                 <div className="absolute top-4 right-4 z-20 bg-rose-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-md">
                   חדש
@@ -248,40 +253,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 🔥 משחק השבוע
               </div>
 
-              <div className={`h-36 rounded-2xl bg-gradient-to-br ${getGameThumbnailBgClass(featuredGame)} flex items-center justify-center mb-3 relative overflow-hidden group-hover:scale-[1.02] transition-transform`}>
+              <div className={`h-72 sm:h-[320px] bg-gradient-to-br ${getGameThumbnailBgClass(featuredGame)} flex items-center justify-center relative overflow-hidden group-hover:scale-[1.02] transition-transform`}>
                 {getGameThumbnailUrl(featuredGame) && (
                   <img
                     src={getGameThumbnailUrl(featuredGame)}
                     alt={featuredGame.title}
-                    className="absolute inset-0 w-full h-full object-cover z-0 transition-transform duration-500 group-hover:scale-110"
+                    className="absolute inset-0 w-full h-full object-cover object-[center_25%] z-0 transition-transform duration-500 group-hover:scale-110"
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = 'none';
                     }}
                   />
                 )}
-                <div className="w-12 h-12 rounded-full bg-[#2f4d21]/80 backdrop-blur-md flex items-center justify-center text-white shadow-xl relative z-10">
-                  <Play className="w-6 h-6 fill-[#c99719] text-[#c99719] translate-x-0.5" />
-                </div>
               </div>
 
-              <div className="space-y-1.5 text-right">
-                <div className="flex items-center gap-2">
-                  <div className="text-[11px] text-[#2fab65] font-black uppercase tracking-wide">
-                    {featuredGame.category}
+              <div className="text-right p-4 pb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-black text-slate-900 group-hover:text-[#2fab65] transition-colors">
+                    {featuredGame.title}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {featuredGame.isAdminOnly && (
+                      <span title="סודי (גלוי רק למנהל)" className="text-[11px] bg-slate-100 text-slate-600 px-2 rounded-full font-bold border border-slate-200 flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        סודי
+                      </span>
+                    )}
+                    <div className="text-[11px] text-[#2fab65] font-black uppercase tracking-wide bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                      {featuredGame.category}
+                    </div>
                   </div>
-                  {featuredGame.isAdminOnly && (
-                    <span title="סודי (גלוי רק למנהל)" className="text-[11px] bg-slate-100 text-slate-600 px-2 rounded-full font-bold border border-slate-200 flex items-center gap-1">
-                      <Lock className="w-3 h-3" />
-                      סודי
-                    </span>
-                  )}
                 </div>
-                <h3 className="text-lg font-black text-slate-900 group-hover:text-[#2fab65] transition-colors">
-                  {featuredGame.title}
-                </h3>
-                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
-                  {featuredGame.subtitle || featuredGame.description}
-                </p>
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs text-slate-500 font-semibold">
                   <span className="flex items-center gap-1 text-[#c99719] font-bold">
@@ -290,13 +291,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </span>
                   <span>{(featuredGame.playCount || 0).toLocaleString()} שחקנים</span>
                 </div>
-
-                <button
-                  onClick={() => { soundManager.playClick(); onSelectGame(featuredGame.id); }}
-                  className="w-full mt-2 py-2.5 rounded-xl bg-[#2fab65] hover:bg-[#28995a] text-white font-black text-xs transition-all shadow-md text-center"
-                >
-                  שחק עכשיו
-                </button>
 
                 {/* Carousel Controls */}
                 {featuredGames.length > 1 && (
@@ -407,7 +401,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             return (
               <div
                 key={game.id}
-                className="group relative bg-white border border-slate-200 hover:border-[#2fab65] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between"
+                onClick={() => { soundManager.playClick(); setSelectedGameModal(game); }}
+                className="group relative bg-white border border-slate-200 hover:border-[#2fab65] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between cursor-pointer"
               >
                 {game.isNew && (
                   <div className="absolute top-4 right-4 z-20 bg-rose-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white animate-pulse">
@@ -416,7 +411,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 )}
                 <div>
                   {/* Thumbnail */}
-                  <div className={`h-40 bg-gradient-to-br ${getGameThumbnailBgClass(game)} p-4 flex flex-col justify-between relative overflow-hidden`}>
+                  <div className={`h-56 sm:h-64 bg-gradient-to-br ${getGameThumbnailBgClass(game)} p-4 flex flex-col justify-between relative overflow-hidden`}>
                     {getGameThumbnailUrl(game) && (
                       <img
                         src={getGameThumbnailUrl(game)}
@@ -453,35 +448,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       </button>
                     </div>
 
-                    <div className="text-center relative z-10">
-                      <div className="w-12 h-12 rounded-2xl bg-[#2f4d21]/60 backdrop-blur-md border border-white/30 mx-auto flex items-center justify-center text-[#c99719] mb-2 shadow-lg group-hover:scale-110 transition-transform">
-                        <Play className="w-6 h-6 fill-[#c99719] translate-x-0.5" />
-                      </div>
-                    </div>
-
                     <div className="flex items-center justify-between text-[11px] text-white font-bold bg-[#2f4d21]/50 px-2.5 py-0.5 rounded-md backdrop-blur-sm relative z-10">
                       <span>{game.difficulty}</span>
                       <span>{game.ageRating}</span>
                     </div>
                   </div>
 
-                  {/* Card Content */}
-                  <div className="p-5 space-y-2">
-                    <h3 className="font-black text-slate-900 text-lg group-hover:text-[#2fab65] transition-colors line-clamp-1">
+                  {/* Title only */}
+                  <div className="p-3 text-center border-t border-slate-100">
+                    <h3 className="font-black text-slate-900 text-base group-hover:text-[#2fab65] transition-colors line-clamp-1">
                       {game.title}
                     </h3>
-                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
-                      {game.subtitle || game.description}
-                    </p>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-1.5 pt-2">
-                      {(game.tags || []).slice(0, 3).map((tag) => (
-                        <span key={tag} className="text-[10px] bg-emerald-50 text-[#2f4d21] font-bold px-2 py-0.5 rounded-md border border-emerald-100">
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
                   </div>
                 </div>
 
@@ -507,21 +484,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 )}
 
-                {/* Card Footer */}
-                <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-1 text-xs text-[#c99719] font-extrabold">
-                    <Star className="w-3.5 h-3.5 fill-[#c99719] text-[#c99719]" />
-                    <span>{game.rating}</span>
-                  </div>
-
-                  <button
-                    onClick={() => { soundManager.playClick(); onSelectGame(game.id); }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#c99719] hover:bg-[#e5af24] text-[#2f4d21] font-black text-xs transition-all shadow-sm"
-                  >
-                    <span>הפעל משחק</span>
-                    <ChevronRight className="w-4 h-4 rotate-180" />
-                  </button>
-                </div>
               </div>
             );
           })}
@@ -674,6 +636,92 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
+    
+      {/* Game Details Popup Modal */}
+      {selectedGameModal && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+          onClick={() => { soundManager.playClick(); setSelectedGameModal(null); }}
+        >
+          <div 
+            className="bg-white rounded-2xl overflow-hidden shadow-2xl max-w-sm w-full relative animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => { soundManager.playClick(); setSelectedGameModal(null); }}
+              className="absolute top-3 right-3 z-30 p-1.5 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            
+            <div className={`h-64 bg-gradient-to-br ${getGameThumbnailBgClass(selectedGameModal)} p-4 flex flex-col justify-between relative overflow-hidden`}>
+              {getGameThumbnailUrl(selectedGameModal) && (
+                <img
+                  src={getGameThumbnailUrl(selectedGameModal)}
+                  alt={selectedGameModal.title}
+                  className="absolute inset-0 w-full h-full object-cover z-0"
+                />
+              )}
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {selectedGameModal.isAdminOnly && (
+                    <span className="text-[11px] font-black px-3 py-1 rounded-full bg-slate-800/80 backdrop-blur-md text-white border border-slate-600 flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      סודי
+                    </span>
+                  )}
+                  {selectedGameModal.isNew && (
+                    <span className="text-[11px] font-black px-3 py-1 rounded-full bg-rose-600 text-white border-2 border-white shadow-lg animate-pulse">
+                      חדש!
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-white font-bold bg-[#2f4d21]/50 px-2.5 py-0.5 rounded-md backdrop-blur-sm relative z-10">
+                <span>{selectedGameModal.difficulty}</span>
+                <span>{selectedGameModal.ageRating}</span>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <h3 className="font-black text-slate-900 text-2xl">
+                {selectedGameModal.title}
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                {selectedGameModal.subtitle || selectedGameModal.description}
+              </p>
+
+              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
+                {(selectedGameModal.tags || []).map((tag) => (
+                  <span key={tag} className="text-xs bg-emerald-50 text-[#2f4d21] font-bold px-2 py-1 rounded-md border border-emerald-100">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-1 text-sm text-[#c99719] font-extrabold">
+                <Star className="w-5 h-5 fill-[#c99719] text-[#c99719]" />
+                <span>{selectedGameModal.rating} ({selectedGameModal.ratingCount})</span>
+              </div>
+
+              <button
+                onClick={() => { 
+                  soundManager.playClick(); 
+                  onSelectGame(selectedGameModal.id);
+                  setSelectedGameModal(null);
+                }}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#2fab65] hover:bg-[#28995a] text-white font-black text-sm transition-all shadow-md hover:scale-105"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>שחק עכשיו</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

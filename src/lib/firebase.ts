@@ -38,6 +38,11 @@ import firebaseConfig from '../../firebase-applet-config.json';
 import { UserProfile, Game, GameComment, NewsArticle } from '../types';
 import { getLevelDetails } from '../utils/levels';
 
+// Silent in production — only log in dev
+const isDev = import.meta.env.DEV;
+const log = (...args: any[]) => { if (isDev) console.log(...args); };
+const logError = (...args: any[]) => { if (isDev) console.error(...args); };
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -81,7 +86,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  logError('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -304,7 +309,7 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
           }
         });
       } catch (e) {
-        console.error('Failed to trigger welcome email', e);
+        logError('Failed to trigger welcome email', e);
       }
     }
 
@@ -357,7 +362,7 @@ export const saveUserProfileToFirestore = async (userProfile: UserProfile, immed
       updateLeaderboardEntry(profileToSave);
     } catch (error) {
       if (checkAndHandleQuotaError(error)) return;
-      console.error('Error saving user profile to Firestore:', error);
+      logError('Error saving user profile to Firestore:', error);
     }
   };
 
@@ -493,7 +498,7 @@ export const subscribeToGameComments = (
       }
     );
   } catch (err) {
-    console.error('Error setting up comments snapshot:', err);
+    logError('Error setting up comments snapshot:', err);
     return () => {};
   }
 };
@@ -549,7 +554,7 @@ export const subscribeToNewsArticles = (
       }
     );
   } catch (err) {
-    console.error('Error setting up news snapshot:', err);
+    logError('Error setting up news snapshot:', err);
     return () => {};
   }
 };
@@ -575,7 +580,7 @@ export const toggleNewsArticleLike = async (articleId: string, userId: string) =
     });
   } catch (error) {
     if (checkAndHandleQuotaError(error)) return;
-    console.error('Error toggling news article like:', error);
+    logError('Error toggling news article like:', error);
   }
 };
 
@@ -595,7 +600,7 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
       userId: doc.id
     })) as unknown as UserProfile[];
   } catch (error) {
-    console.error('Error fetching all users:', error);
+    logError('Error fetching all users:', error);
     throw error;
   }
 };
@@ -609,7 +614,7 @@ export const toggleUserStatus = async (targetUid: string, disabled: boolean): Pr
     const adminToggleUserStatus = httpsCallable(functions, 'adminToggleUserStatus');
     await adminToggleUserStatus({ targetUid, disabled });
   } catch (error) {
-    console.error('Error toggling user status:', error);
+    logError('Error toggling user status:', error);
     throw error;
   }
 };
@@ -623,7 +628,7 @@ export const deleteUserAccount = async (targetUid: string): Promise<void> => {
     const adminDeleteUser = httpsCallable(functions, 'adminDeleteUser');
     await adminDeleteUser({ targetUid });
   } catch (error) {
-    console.error('Error deleting user account:', error);
+    logError('Error deleting user account:', error);
     throw error;
   }
 };
@@ -733,7 +738,7 @@ export const addGameCommentToFirestore = async (
     if (checkAndHandleQuotaError(error)) {
       return 'local-comment-id';
     }
-    console.error('Error adding comment to Firestore:', error);
+    logError('Error adding comment to Firestore:', error);
     throw error;
   }
 };
@@ -770,7 +775,7 @@ export const likeGameCommentInFirestore = async (
     }
   } catch (error) {
     if (checkAndHandleQuotaError(error)) return;
-    console.error('Error updating comment likes in Firestore:', error);
+    logError('Error updating comment likes in Firestore:', error);
   }
 };
 
@@ -798,7 +803,7 @@ export const getGameGlobalData = async (gameId: string): Promise<any> => {
     return null;
   } catch (error) {
     if (checkAndHandleQuotaError(error)) return null;
-    console.error('Error fetching global game data:', error);
+    logError('Error fetching global game data:', error);
     return null;
   }
 };
@@ -813,7 +818,7 @@ export const updateGameGlobalData = async (gameId: string, data: any): Promise<v
     await setDoc(docRef, { data, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (error) {
     if (checkAndHandleQuotaError(error)) return;
-    console.error('Error updating global game data:', error);
+    logError('Error updating global game data:', error);
   }
 };
 
@@ -851,7 +856,7 @@ export const saveGameProgressToFirestore = async (
       }, { merge: true });
     } catch (error) {
       if (checkAndHandleQuotaError(error)) return;
-      console.error(`Error saving game progress for gameId=${gameId}:`, error);
+      logError(`Error saving game progress for gameId=${gameId}:`, error);
     }
   }, 2000);
 };
@@ -881,7 +886,7 @@ export const getGameProgressFromFirestore = async (
     return null;
   } catch (error) {
     if (checkAndHandleQuotaError(error)) return null;
-    console.error(`Error loading game progress for gameId=${gameId}:`, error);
+    logError(`Error loading game progress for gameId=${gameId}:`, error);
     return null;
   }
 };
@@ -942,7 +947,7 @@ export const updateLeaderboardEntry = async (userProfile: UserProfile) => {
     await setDoc(leaderboardRef, entryData, { merge: true });
   } catch (error) {
     if (checkAndHandleQuotaError(error)) return;
-    console.error('Error updating leaderboard entry in Firestore:', error);
+    logError('Error updating leaderboard entry in Firestore:', error);
   }
 };
 
@@ -983,7 +988,7 @@ export const subscribeToLeaderboard = (
       }
     );
   } catch (err) {
-    console.error('Error setting up leaderboard snapshot:', err);
+    logError('Error setting up leaderboard snapshot:', err);
     return () => {};
   }
 };
@@ -1033,7 +1038,7 @@ export const subscribeToGameLeaderboard = (
       }
     );
   } catch (error) {
-    console.error('Error setting up game leaderboard subscription:', error);
+    logError('Error setting up game leaderboard subscription:', error);
     return () => {};
   }
 };
@@ -1053,7 +1058,7 @@ const EMOJI_TO_IMAGE: Record<string, string> = {
 };
 
 export const migrateAvatarsInDB = async () => {
-  console.log("Starting DB migration for avatars...");
+  log("Starting DB migration for avatars...");
   let count = 0;
   
   // 1. Users
@@ -1104,7 +1109,7 @@ export const migrateAvatarsInDB = async () => {
     }
   }
   
-  console.log("DB migration completed! Updated " + count + " documents.");
+  log("DB migration completed! Updated " + count + " documents.");
   return count;
 };
 
@@ -1131,12 +1136,12 @@ export const subscribeToGlobalSettings = (callback: (settings: { isMaintenanceMo
       },
       (error) => {
         checkAndHandleQuotaError(error);
-        console.error('Settings snapshot error:', error);
+        logError('Settings snapshot error:', error);
         callback({ isMaintenanceMode: false, isMonetizationEnabled: true }); // Unblock on error
       }
     );
   } catch (err) {
-    console.error('Error setting up settings snapshot:', err);
+    logError('Error setting up settings snapshot:', err);
     callback({ isMaintenanceMode: false, isMonetizationEnabled: true });
     return () => {};
   }
@@ -1154,7 +1159,7 @@ export const setMaintenanceMode = async (isEnabled: boolean) => {
       isAdminOnly: false,
     }, { merge: true });
   } catch (err) {
-    console.error('Error updating maintenance mode:', err);
+    logError('Error updating maintenance mode:', err);
     throw err;
   }
 };
@@ -1171,7 +1176,7 @@ export const setMonetizationMode = async (isEnabled: boolean) => {
       isAdminOnly: false,
     }, { merge: true });
   } catch (err) {
-    console.error('Error updating monetization mode:', err);
+    logError('Error updating monetization mode:', err);
     throw err;
   }
 };
@@ -1185,7 +1190,7 @@ export const adminToggleUserVipStatus = async (targetUid: string, isVip: boolean
     const toggleVip = httpsCallable(functions, 'adminToggleUserVipStatus');
     await toggleVip({ targetUid, isVip });
   } catch (error) {
-    console.error('Error toggling VIP status:', error);
+    logError('Error toggling VIP status:', error);
     throw error;
   }
 };

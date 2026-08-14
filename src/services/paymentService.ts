@@ -18,7 +18,7 @@ export const paymentService = {
       
       return data;
     } catch (error) {
-      console.error('Error calling createMorningCheckout:', error);
+      // silent
       throw error;
     }
   }

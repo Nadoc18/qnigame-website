@@ -29,7 +29,7 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({ oobCode, onCon
         soundManager.playCorrect();
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       } catch (error: any) {
-        console.error('Email verification error:', error);
+        // silent
         setStatus('error');
         if (error.code === 'auth/invalid-action-code') {
           setMessage('הקישור פג תוקף או שכבר נעשה בו שימוש. (אם כבר אימתת את המייל בעבר, תוכל פשוט להמשיך)');

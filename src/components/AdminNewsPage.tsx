@@ -88,7 +88,7 @@ export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user, al
       setIsLoadingPlayers(true);
       getAllUsers()
         .then(setPlayersList)
-        .catch(err => console.error(err))
+        .catch(() => {})
         .finally(() => setIsLoadingPlayers(false));
     }
   }, [adminTab]);

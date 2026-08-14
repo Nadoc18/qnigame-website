@@ -248,7 +248,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               gameId: targetGameId,
               data: globalData
             }, '*');
-          }).catch(console.error);
+          }).catch(() => {});
         }
       } else if (data.type === 'QNIGAME_SAVE_GLOBAL_DATA') {
         if (data.data !== undefined) {
@@ -260,7 +260,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                 gameId: targetGameId
               }, '*');
             }
-          }).catch(console.error);
+          }).catch(() => {});
         }
       }
     };
@@ -478,7 +478,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
     try {
       await addGameCommentToFirestore(newCommData);
     } catch (err) {
-      console.error('Error saving comment to Firestore:', err);
+      // silent
     }
   };
 
@@ -704,7 +704,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                       } else {
                         if (videoRef.current) {
                           videoRef.current.muted = false;
-                          videoRef.current.play().catch(err => console.error("Play failed:", err));
+                          videoRef.current.play().catch(() => {});
                         }
                         setGameState('intro_video');
                       }
@@ -729,7 +729,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                     controls={false}
                     onEnded={() => setGameState('playing')}
                     onError={(e) => {
-                      console.error("Erreur de lecture vidéo (Vérifiez les accès du fichier Firebase Storage):", e);
+                      // silent
                     }}
                     className="w-full h-full object-cover"
                   />

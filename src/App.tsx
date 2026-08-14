@@ -97,7 +97,7 @@ export default function App() {
         try {
           return JSON.parse(saved);
         } catch (e) {
-          console.error(e);
+          // silent
         }
       }
     }
@@ -135,11 +135,11 @@ export default function App() {
           setGamesList(mergedGames);
         }
       } catch (err) {
-        console.error('Error loading games:', err);
+        // silent
       }
     };
     loadGames();
-    getShabbatTimes().then(setShabbatInfo).catch(console.error);
+    getShabbatTimes().then(setShabbatInfo).catch(() => {});
   }, [user.isAdmin]);
 
   // Subscribe to Live News
@@ -217,7 +217,7 @@ export default function App() {
           });
 
           // Ensure the user is ALWAYS in the public leaderboard when they log in
-          updateLeaderboardEntry({ ...syncedProfile, isFirebaseUser: true }).catch(console.error);
+          updateLeaderboardEntry({ ...syncedProfile, isFirebaseUser: true }).catch(() => {});
 
           // Subscribe to live profile changes in Firestore
           unsubSnapshot = subscribeToUserProfile(fbUser.uid, (updatedData) => {
@@ -228,7 +228,7 @@ export default function App() {
             }));
           });
         } catch (error) {
-          console.error('Error syncing profile:', error);
+          // silent
         }
       } else {
         if (unsubSnapshot) unsubSnapshot();
@@ -434,7 +434,7 @@ export default function App() {
           isFirebaseUser: true,
         });
       } catch (err) {
-        console.error('Manual sync failed:', err);
+        // silent
       }
     }
 
