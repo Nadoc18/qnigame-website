@@ -176,6 +176,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const featuredGames = featuredGamesList.length > 0 ? featuredGamesList : games.slice(0, 3);
   const featuredGame = featuredGames[featuredIndex] || games[0];
 
+  useEffect(() => {
+    if (featuredGames.length <= 1) return;
+    const timer = setInterval(() => {
+      setFeaturedIndex((prev) => (prev + 1) % featuredGames.length);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [featuredGames.length, featuredIndex]);
+
   if (!featuredGame) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-8 text-center space-y-4">
@@ -184,14 +192,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </div>
     );
   }
-
-  useEffect(() => {
-    if (featuredGames.length <= 1) return;
-    const timer = setInterval(() => {
-      setFeaturedIndex((prev) => (prev + 1) % featuredGames.length);
-    }, 8000);
-    return () => clearInterval(timer);
-  }, [featuredGames.length, featuredIndex]);
 
   return (
     <div className="space-y-12 pb-16">
