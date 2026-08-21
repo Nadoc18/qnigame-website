@@ -785,8 +785,8 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
               <div className="flex items-center gap-3 text-xs">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#c99719] inline-block animate-pulse shrink-0"></span>
                 <div className="flex flex-col gap-0.5 leading-tight">
-                  <span className="font-black text-[#c99719] sm:text-sm">חווית המשחק טובה יותר במחשב</span>
-                  <span className="text-white/90 font-medium text-[10px] sm:text-xs">בפעם הראשונה, טעינת המשחק עשויה לקחת מעט יותר זמן מהרגיל.</span>
+                  <span className="font-black text-[#c99719] text-sm sm:text-base">חווית המשחק טובה יותר במחשב</span>
+                  <span className="text-white/90 font-medium text-xs sm:text-sm">בפעם הראשונה, טעינת המשחק עשויה לקחת מעט יותר זמן מהרגיל.</span>
                 </div>
               </div>
 
