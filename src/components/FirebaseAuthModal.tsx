@@ -27,6 +27,7 @@ import {
   auth
 } from '../lib/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { sendEmailVerification } from 'firebase/auth';
 import { soundManager } from '../utils/audio';
 import { UserProfile } from '../types';
 import confetti from 'canvas-confetti';
@@ -148,7 +149,12 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
             const sendCustomVerificationEmail = httpsCallable(functions, 'sendCustomVerificationEmail');
             await sendCustomVerificationEmail({ email: auth.currentUser.email });
           } catch (e) {
-            // silent
+            console.error('Custom email failed, falling back to default:', e);
+            try {
+              await sendEmailVerification(auth.currentUser);
+            } catch (fallbackErr) {
+              console.error('Fallback email also failed:', fallbackErr);
+            }
           }
         }
         
