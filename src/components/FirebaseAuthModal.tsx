@@ -258,7 +258,6 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
         const syncedProfile = await syncUserProfile(cred.user);
         if (!syncedProfile.firstName || !syncedProfile.lastName) {
           setIsOnboarding(true);
-          setSuccessMsg('נא להשלים את פרטי השחקן שלך (שם, שם משפחה וגיל)');
         } else {
           setSuccessMsg('התחברת בהצלחה! הישגייך נשמרו בחשבונך.');
         }
