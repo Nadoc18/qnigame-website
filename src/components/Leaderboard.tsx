@@ -268,9 +268,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
         <div className="px-6 py-4 bg-slate-100 border-b border-slate-200 font-black text-xs text-slate-700 grid grid-cols-12 gap-2">
           <div className="col-span-1 text-center">מיקום</div>
           <div className="col-span-5 sm:col-span-4">שחקן</div>
-          <div className="col-span-3 sm:col-span-3">תואר תורני</div>
+          <div className="hidden sm:block col-span-3">תואר תורני</div>
           <div className="col-span-3 sm:col-span-2 text-center">רמה</div>
-          <div className="hidden sm:block col-span-2 text-left">ניקוד</div>
+          <div className="col-span-3 sm:col-span-2 text-left">ניקוד</div>
         </div>
 
         <div className="divide-y divide-slate-100">
@@ -312,7 +312,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
                   </div>
                 </div>
 
-                <div className="col-span-3 sm:col-span-3">
+                <div className="hidden sm:block col-span-3">
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-[#2f4d21] border border-emerald-200 inline-block">
                     {user.title}
                   </span>
@@ -322,8 +322,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, onOpenAut
                   רמה {user.level}
                 </div>
 
-                <div className="hidden sm:block col-span-2 text-left font-black text-[#c99719] text-base">
-                  {user.points} נק׳
+                <div className="col-span-3 sm:col-span-2 text-left font-black text-[#c99719] text-base">
+                  {user.points} <span className="text-xs">נק׳</span>
                 </div>
               </div>
             ))
