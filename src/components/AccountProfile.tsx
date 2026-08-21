@@ -81,7 +81,7 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
   const [activeTab, setActiveTab] = useState<'favorites' | 'badges' | 'history' | 'settings'>('favorites');
   const [firstNameInput, setFirstNameInput] = useState(user.firstName || '');
   const [lastNameInput, setLastNameInput] = useState(user.lastName || '');
-  const [ageInput, setAgeInput] = useState<number>(user.age || 10);
+  const [ageInput, setAgeInput] = useState<number | ''>(user.age || '');
   const [bioInput, setBioInput] = useState(user.bio || 'שוקד על דברי תורה וערכים בקניגיים.');
   const [isSaved, setIsSaved] = useState(false);
 
@@ -96,7 +96,7 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
       ...user,
       firstName: firstNameInput.trim(),
       lastName: lastNameInput.trim(),
-      age: Number(ageInput),
+      age: Number(ageInput) || 10,
       username: updatedUsername,
       bio: bioInput,
     };
@@ -538,7 +538,7 @@ export const AccountProfile: React.FC<AccountProfileProps> = ({
                 min={4}
                 max={99}
                 value={ageInput}
-                onChange={(e) => setAgeInput(Number(e.target.value))}
+                onChange={(e) => setAgeInput(e.target.value === '' ? '' : Number(e.target.value))}
                 className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium max-w-xs"
               />
             </div>

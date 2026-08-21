@@ -21,7 +21,8 @@ import {
   FastForward,
   Film,
   Trophy,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import confetti from 'canvas-confetti';
@@ -37,7 +38,9 @@ import {
   subscribeToGameLeaderboard,
   LeaderboardEntry,
   getGameGlobalData,
-  updateGameGlobalData
+  updateGameGlobalData,
+  getGameProgressFromFirestore,
+  deleteGameCommentFromFirestore
 } from '../lib/firebase';
 
 interface GamePlayerFrameProps {
@@ -45,7 +48,7 @@ interface GamePlayerFrameProps {
   onBack: () => void;
   user: UserProfile;
   onToggleFavorite: (gameId: string) => void;
-  onRecordScore: (gameId: string, score: number) => void;
+  onRecordScore?: (gameId: string, pointsToAdd?: number, newHighScoreAttempt?: number) => void;
   onSaveGameProgress?: (gameId: string, progressData: any) => void;
   onSelectGame: (gameId: string) => void;
   allGames: Game[];
@@ -84,10 +87,46 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   onOpenAuthModal,
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('qnigame_sound_enabled');
+    return saved ? saved === 'true' : true;
+  });
   const [gameState, setGameState] = useState<'splash' | 'intro_video' | 'playing'>('splash');
   const videoRef = useRef<HTMLVideoElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [key, setKey] = useState(0); // To force iframe restart
+  
+  const gameStateRef = useRef(gameState);
+  const pendingMessagesRef = useRef<{type: string, source: WindowProxy, data: any}[]>([]);
+
+  useEffect(() => {
+    gameStateRef.current = gameState;
+    // Process pending messages when game starts playing
+    if (gameState === 'playing' && pendingMessagesRef.current.length > 0) {
+      const messagesToProcess = [...pendingMessagesRef.current];
+      pendingMessagesRef.current = [];
+      
+      messagesToProcess.forEach(msg => {
+        // We simulate a message event to re-trigger the logic, preserving the source window
+        const event = new MessageEvent('message', {
+          data: msg.data,
+          source: msg.source,
+        });
+        window.dispatchEvent(event);
+      });
+    }
+  }, [gameState]);
+
+  // Sync sound setting to localStorage and iframe
+  useEffect(() => {
+    localStorage.setItem('qnigame_sound_enabled', String(soundEnabled));
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({
+        type: 'QNIGAME_SET_SOUND',
+        enabled: soundEnabled
+      }, '*');
+    }
+  }, [soundEnabled]);
 
   const gameBadges = useMemo(() => getBadgesForGame(game, user.badges), [game, user.badges]);
 
@@ -105,14 +144,33 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   const playStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    let hasCountedPlay = false;
+
     if (gameState === 'playing') {
       playStartTimeRef.current = Date.now();
+
+      interval = setInterval(() => {
+        if (playStartTimeRef.current) {
+          const now = Date.now();
+          const duration = Math.floor((now - playStartTimeRef.current) / 1000);
+          if (duration > 0) {
+            const playInc = !hasCountedPlay && duration >= 5 ? 1 : 0;
+            if (playInc > 0) hasCountedPlay = true;
+            
+            incrementGameStats(game.id, playInc, duration);
+            playStartTimeRef.current = now;
+          }
+        }
+      }, 15000);
     } else {
       // If we transition out of 'playing', save the time immediately
       if (playStartTimeRef.current) {
         const playDurationSeconds = Math.floor((Date.now() - playStartTimeRef.current) / 1000);
-        if (playDurationSeconds >= 5) {
-          incrementGameStats(game.id, 1, playDurationSeconds);
+        if (playDurationSeconds > 0) {
+          const playInc = !hasCountedPlay && playDurationSeconds >= 5 ? 1 : 0;
+          if (playInc > 0) hasCountedPlay = true;
+          incrementGameStats(game.id, playInc, playDurationSeconds);
         }
         playStartTimeRef.current = null;
       }
@@ -122,8 +180,9 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
     const handleBeforeUnload = () => {
       if (playStartTimeRef.current) {
         const playDurationSeconds = Math.floor((Date.now() - playStartTimeRef.current) / 1000);
-        if (playDurationSeconds >= 5) {
-          incrementGameStats(game.id, 1, playDurationSeconds);
+        if (playDurationSeconds > 0) {
+          const playInc = !hasCountedPlay && playDurationSeconds >= 5 ? 1 : 0;
+          incrementGameStats(game.id, playInc, playDurationSeconds);
         }
         playStartTimeRef.current = null;
       }
@@ -132,13 +191,16 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
+      if (interval) clearInterval(interval);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       
       // Save on normal unmount
       if (playStartTimeRef.current) {
         const playDurationSeconds = Math.floor((Date.now() - playStartTimeRef.current) / 1000);
-        if (playDurationSeconds >= 5) {
-          incrementGameStats(game.id, 1, playDurationSeconds);
+        if (playDurationSeconds > 0) {
+          const playInc = !hasCountedPlay && playDurationSeconds >= 5 ? 1 : 0;
+          if (playInc > 0) hasCountedPlay = true;
+          incrementGameStats(game.id, playInc, playDurationSeconds);
         }
         playStartTimeRef.current = null;
       }
@@ -170,61 +232,104 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
       const data = event.data;
       if (!data || typeof data !== 'object') return;
 
-      const targetGameId = data.gameId || game.id;
+      // Force use of the platform's game.id to avoid mismatches if the game hardcodes a different ID in its payload
+      const targetGameId = game.id;
       const targetWin = event.source as WindowProxy;
 
       if (data.type === 'QNIGAME_VERIFY_TOKEN') {
+        if (gameStateRef.current !== 'playing') {
+          pendingMessagesRef.current.push({ type: 'QNIGAME_VERIFY_TOKEN', source: targetWin, data: data });
+          return;
+        }
         if (targetWin && targetWin.postMessage) {
-          let currentSave = user.gameProgress?.[targetGameId] || null;
-          if (typeof currentSave === 'string') {
-            try { currentSave = JSON.parse(currentSave); } catch(e) {}
-          }
+          const verifyAsync = async () => {
+            let currentSave = user.gameProgress?.[targetGameId] || null;
+            if (!currentSave && user.id && !user.id.startsWith('guest')) {
+               try {
+                  const fsSave = await getGameProgressFromFirestore(user.id, targetGameId);
+                  if (fsSave) {
+                     currentSave = fsSave;
+                  }
+               } catch (e) {
+                  console.error("Failed to load progress from firestore", e);
+               }
+            }
+            if (typeof currentSave === 'string') {
+              try { currentSave = JSON.parse(currentSave); } catch(e) {}
+            }
 
-          // Standard QNIGAME_AUTH_CONFIRMED response with generic progress object
-          targetWin.postMessage({
-            type: 'QNIGAME_AUTH_CONFIRMED',
-            user: {
-              id: user.id,
-              username: user.username,
-              level: user.level,
-              points: user.gameStats?.[targetGameId]?.highScore || 0,
-            },
-            progress: currentSave,
-            gameId: targetGameId,
-          }, '*');
+            // Standard QNIGAME_AUTH_CONFIRMED response with generic progress object
+            targetWin.postMessage({
+              type: 'QNIGAME_AUTH_CONFIRMED',
+              user: {
+                id: user.id,
+                username: user.username,
+                level: user.level,
+                points: user.gameStats?.[targetGameId]?.highScore || 0,
+              },
+              progress: currentSave,
+              gameId: targetGameId,
+              soundEnabled: soundEnabled, // Initial sound state
+            }, '*');
 
-          // Backward-compatibility QNIGAME_TOKEN_VERIFIED response
-          targetWin.postMessage({
-            type: 'QNIGAME_TOKEN_VERIFIED',
-            success: true,
-            gameId: targetGameId,
-            user: {
-              id: user.id,
-              username: user.username,
-              level: user.level,
-              points: user.gameStats?.[targetGameId]?.highScore || 0,
-            },
-            progress: currentSave,
-            gameProgress: currentSave,
-          }, '*');
+            // Backward-compatibility QNIGAME_TOKEN_VERIFIED response
+            targetWin.postMessage({
+              type: 'QNIGAME_TOKEN_VERIFIED',
+              success: true,
+              gameId: targetGameId,
+              user: {
+                id: user.id,
+                username: user.username,
+                level: user.level,
+                points: user.gameStats?.[targetGameId]?.highScore || 0,
+              },
+              progress: currentSave,
+              gameProgress: currentSave,
+              soundEnabled: soundEnabled,
+            }, '*');
+          };
+          verifyAsync();
         }
       } else if (data.type === 'QNIGAME_LOAD_PROGRESS') {
+        if (gameStateRef.current !== 'playing') {
+          pendingMessagesRef.current.push({ type: 'QNIGAME_LOAD_PROGRESS', source: targetWin, data: data });
+          return;
+        }
         if (targetWin && targetWin.postMessage) {
-          let currentSave = user.gameProgress?.[targetGameId] || null;
-          if (typeof currentSave === 'string') {
-            try { currentSave = JSON.parse(currentSave); } catch(e) {}
-          }
-          targetWin.postMessage({
-            type: 'QNIGAME_PROGRESS_LOADED',
-            success: true,
-            gameId: targetGameId,
-            progress: currentSave,
-            gameProgress: currentSave,
-          }, '*');
+          const loadAsync = async () => {
+            let currentSave = user.gameProgress?.[targetGameId] || null;
+            if (!currentSave && user.id && !user.id.startsWith('guest')) {
+               try {
+                  const fsSave = await getGameProgressFromFirestore(user.id, targetGameId);
+                  if (fsSave) currentSave = fsSave;
+               } catch (e) {}
+            }
+            if (typeof currentSave === 'string') {
+              try { currentSave = JSON.parse(currentSave); } catch(e) {}
+            }
+            targetWin.postMessage({
+              type: 'QNIGAME_PROGRESS_LOADED',
+              success: true,
+              gameId: targetGameId,
+              progress: currentSave,
+            }, '*');
+          };
+          loadAsync();
         }
       } else if (data.type === 'QNIGAME_UPDATE_SCORE') {
-        if (data.score !== undefined) {
-          onRecordScore(targetGameId, Number(data.score));
+        let pointsToAdd = 0;
+        let highScore = 0;
+        
+        if (data.pointsToAdd !== undefined) pointsToAdd = Number(data.pointsToAdd);
+        if (data.highScore !== undefined) highScore = Number(data.highScore);
+        
+        // Backwards compatibility for older games sending just {score: 10}
+        if (data.pointsToAdd === undefined && data.highScore === undefined && data.score !== undefined) {
+          pointsToAdd = Number(data.score); // Default: legacy score adds points
+        }
+
+        if (onRecordScore && (pointsToAdd > 0 || highScore > 0)) {
+          onRecordScore(targetGameId, pointsToAdd, highScore);
         }
       } else if (data.type === 'QNIGAME_SAVE_PROGRESS') {
         const rawProgress = data.progressData !== undefined ? data.progressData : data.progress;
@@ -240,6 +345,10 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           }
         }
       } else if (data.type === 'QNIGAME_LOAD_GLOBAL_DATA') {
+        if (gameStateRef.current !== 'playing') {
+          pendingMessagesRef.current.push({ type: 'QNIGAME_LOAD_GLOBAL_DATA', source: targetWin, data: data });
+          return;
+        }
         if (targetWin && targetWin.postMessage) {
           getGameGlobalData(targetGameId).then((globalData) => {
             targetWin.postMessage({
@@ -262,12 +371,16 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             }
           }).catch(() => {});
         }
+      } else if (data.type === 'QNIGAME_TOGGLE_SOUND') {
+        if (data.enabled !== undefined) {
+          setSoundEnabled(Boolean(data.enabled));
+        }
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [user, game.id, onRecordScore, onSaveGameProgress]);
+  }, [user, game.id, onRecordScore, onSaveGameProgress, soundEnabled]);
 
 
   const [userRating, setUserRating] = useState(5);
@@ -290,7 +403,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
     const unsubLeaderboard = subscribeToGameLeaderboard(game.id, (entries) => {
       setGameLeaderboard(entries);
-    }, 6); // fetch top 6
+    }, 0); // fetch all for local ranking
 
     return () => {
       unsubComments();
@@ -367,6 +480,12 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   const formattedRatio = rawRatio
     ? rawRatio.replace('/', ' / ').replace(':', ' / ')
     : (game.frameWidth === '100%' ? '16 / 9' : '9 / 16');
+    
+  const ratioValue = rawRatio && rawRatio.includes(':') 
+    ? parseFloat(rawRatio.split(':')[0]) / parseFloat(rawRatio.split(':')[1])
+    : rawRatio && rawRatio.includes('/')
+      ? parseFloat(rawRatio.split('/')[0]) / parseFloat(rawRatio.split('/')[1])
+      : (game.frameWidth === '100%' ? 16/9 : 9/16);
 
   // Mobile Screen Orientation Lock / Unlock helpers for 16/9 Landscape games
   const lockLandscapeOrientation = async () => {
@@ -465,7 +584,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
       gameId: game.id,
       userId: user.id,
       userName: user.username || user.email?.split('@')[0] || 'שחקן',
-      userAvatar: user.avatarIcon || '/avatars/shofar.jpg',
+      userAvatar: user.avatarIcon || '/avatars/shofar.png',
       userTitle: user.title || 'לומד תורה',
       rating: userRating,
       content: commentText.trim(),
@@ -507,7 +626,84 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
     likeGameCommentInFirestore(comm.id, user.id, isLiking);
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    if (window.confirm('האם אתה בטוח שברצונך למחוק תגובה זו?')) {
+      try {
+        await deleteGameCommentFromFirestore(commentId);
+      } catch (err) {
+        console.error("Error deleting comment:", err);
+        alert('אירעה שגיאה במחיקת התגובה. אנא נסה שוב.');
+      }
+    }
+  };
+
+  // Leaderboard specific logic
+  const { top10Leaderboard, userRankEntry } = useMemo(() => {
+    const top10Leaderboard = gameLeaderboard.slice(0, 10);
+    const userIndex = gameLeaderboard.findIndex(entry => entry.id === user.id);
+    let userRankEntry = null;
+    if (userIndex >= 10) {
+      userRankEntry = {
+        ...gameLeaderboard[userIndex],
+        rank: userIndex + 1
+      };
+    }
+    return { top10Leaderboard, userRankEntry };
+  }, [gameLeaderboard, user.id]);
+
+  const displayedComments = useMemo(() => {
+    // Sort comments so user's comments are always first, then by date (newest first)
+    const sorted = [...comments].sort((a, b) => {
+      const isUserA = a.userId === user.id;
+      const isUserB = b.userId === user.id;
+      if (isUserA && !isUserB) return -1;
+      if (!isUserA && isUserB) return 1;
+      
+      // Sort by timestamp desc
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
+    
+    return sorted.slice(0, 20);
+  }, [comments, user.id]);
+
   const relatedGames = allGames.filter(g => g.id !== game.id).slice(0, 3);
+
+  const handleIframeLoad = async () => {
+    if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+    
+    // Auto-push the progress to the game just in case the game forgot to ask for it
+    const targetWin = iframeRef.current.contentWindow;
+    const targetGameId = game.id;
+    let currentSave = user.gameProgress?.[targetGameId] || null;
+
+    if (!currentSave && user.id && !user.id.startsWith('guest')) {
+       try {
+          const fsSave = await getGameProgressFromFirestore(user.id, targetGameId);
+          if (fsSave) {
+             currentSave = fsSave;
+          }
+       } catch (e) {
+          console.error("Failed to load progress from firestore on load", e);
+       }
+    }
+    if (typeof currentSave === 'string') {
+      try { currentSave = JSON.parse(currentSave); } catch(e) {}
+    }
+
+    targetWin.postMessage({
+      type: 'QNIGAME_TOKEN_VERIFIED',
+      success: true,
+      gameId: targetGameId,
+      user: {
+        id: user.id,
+        username: user.username,
+        level: user.level,
+        points: user.gameStats?.[targetGameId]?.highScore || 0,
+      },
+      progress: currentSave,
+      gameProgress: currentSave,
+    }, '*');
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 py-6 px-4 sm:px-6 lg:px-8">
@@ -586,9 +782,12 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
           {/* Standard Frame Control Bar (Hidden in Fullscreen) */}
           {!isFullscreen && (
             <div className="flex items-center justify-between px-4 py-3 bg-[#2f4d21] border-b border-[#3e632c] shrink-0 text-white z-40">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="w-3 h-3 rounded-full bg-[#c99719] inline-block animate-pulse"></span>
-                <span className="font-extrabold text-white">מסגרת אינטראקטיבית (HTML5 Game Frame)</span>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#c99719] inline-block animate-pulse shrink-0"></span>
+                <div className="flex flex-col gap-0.5 leading-tight">
+                  <span className="font-black text-[#c99719] sm:text-sm">חווית המשחק טובה יותר במחשב</span>
+                  <span className="text-white/90 font-medium text-[10px] sm:text-xs">בפעם הראשונה, טעינת המשחק עשויה לקחת מעט יותר זמן מהרגיל.</span>
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -639,9 +838,10 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                   ? (isLandscapeGame
                       ? {
                           width: '100%',
-                          maxWidth: '100%',
+                          maxWidth: `calc(80vh * (${formattedRatio}))`,
                           aspectRatio: formattedRatio,
                           maxHeight: '80vh',
+                          margin: '0 auto',
                         }
                       : {
                           width: game.frameWidth && game.frameWidth !== '100%' ? game.frameWidth : '375px',
@@ -653,26 +853,20 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                         })
                   : (isLandscapeGame
                       ? (isIOS && isPortrait ? {
-                          width: '100vh',
-                          height: 'auto',
-                          maxWidth: '100vh',
-                          maxHeight: '100vw',
+                          width: `min(100vh, 100vw * ${ratioValue})`,
+                          height: `min(100vw, 100vh / ${ratioValue})`,
                           aspectRatio: formattedRatio,
                           transform: 'rotate(90deg)',
                           transformOrigin: 'center center',
                           flexShrink: 0,
                         } : {
-                          width: '100%',
-                          height: 'auto',
-                          maxWidth: '100vw',
-                          maxHeight: '100vh',
+                          width: `min(100vw, 100vh * ${ratioValue})`,
+                          height: `min(100vh, 100vw / ${ratioValue})`,
                           aspectRatio: formattedRatio,
                         })
                       : {
-                          height: '100%',
-                          width: 'auto',
-                          maxHeight: '100vh',
-                          maxWidth: '100vw',
+                          width: `min(100vw, 100vh * ${ratioValue})`,
+                          height: `min(100vh, 100vw / ${ratioValue})`,
                           aspectRatio: formattedRatio,
                         })
               }
@@ -759,12 +953,16 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
               {/* 4. The Actual Preloaded Game Iframe */}
               <iframe
+                ref={iframeRef}
                 key={key}
                 title={game.title}
                 src={iframeSrc}
                 srcDoc={(!game.externalUrl && !game.playUrl && combinedHtml.trim()) ? combinedHtml : undefined}
                 className="w-full h-full border-none"
-                sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
+                style={{ overflow: 'hidden' }}
+                scrolling="no"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                onLoad={handleIframeLoad}
                 allow="autoplay; fullscreen"
               />
 
@@ -833,16 +1031,16 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
             
             {gameLeaderboard.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {gameLeaderboard.map((entry, idx) => (
-                  <div key={entry.id} className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm text-xs hover:border-amber-300 transition-colors group">
+                {top10Leaderboard.map((entry, idx) => (
+                  <div key={entry.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border shadow-sm text-xs transition-colors group ${entry.id === user.id ? 'bg-amber-50 border-amber-300' : 'bg-white border-slate-200 hover:border-amber-300'}`}>
                     <div className="flex items-center gap-2 overflow-hidden">
                       <span className="font-black text-slate-400 w-3">{idx + 1}.</span>
                       <img src={getAvatarImage(entry.avatarIcon)} alt="Avatar" className="w-5 h-5 rounded-full object-cover" />
                       <div className="flex items-center gap-1.5 truncate">
                         <span className="font-bold text-slate-700 truncate group-hover:text-amber-700 transition-colors">
-                          {getDisplayName(entry.username, entry.firstName, entry.lastName, entry.userId === user.id, user.isAdmin)}
+                          {getDisplayName(entry.username, entry.firstName, entry.lastName, entry.id === user.id, user.isAdmin)}
                         </span>
-                        {entry.userId === user.id && (
+                        {entry.id === user.id && (
                           <span className="text-[9px] bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black shrink-0">
                             אתה
                           </span>
@@ -852,6 +1050,31 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
                     <span className="font-black text-amber-600 shrink-0 mr-2">{entry.points}</span>
                   </div>
                 ))}
+                
+                {userRankEntry && (
+                  <>
+                    <div className="col-span-full flex items-center justify-center py-1">
+                      <div className="w-1 h-1 rounded-full bg-slate-300 mx-0.5"></div>
+                      <div className="w-1 h-1 rounded-full bg-slate-300 mx-0.5"></div>
+                      <div className="w-1 h-1 rounded-full bg-slate-300 mx-0.5"></div>
+                    </div>
+                    <div className="flex items-center justify-between bg-amber-50 px-3 py-2 rounded-xl border border-amber-300 shadow-sm text-xs group">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <span className="font-black text-slate-500 w-6">{userRankEntry.rank}.</span>
+                        <img src={getAvatarImage(userRankEntry.avatarIcon)} alt="Avatar" className="w-5 h-5 rounded-full object-cover" />
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-bold text-slate-700 truncate group-hover:text-amber-700 transition-colors">
+                            {getDisplayName(userRankEntry.username, userRankEntry.firstName, userRankEntry.lastName, true, user.isAdmin)}
+                          </span>
+                          <span className="text-[9px] bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black shrink-0">
+                            אתה
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-black text-amber-600 shrink-0 mr-2">{userRankEntry.points}</span>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="text-center py-4 px-2 bg-white rounded-xl border border-dashed border-slate-300">
@@ -981,19 +1204,31 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
                   <div className="flex items-center justify-between gap-4 pt-1">
                     <p className="text-sm text-slate-700 leading-relaxed font-medium">{comm.content}</p>
-                    <button
-                      type="button"
-                      onClick={() => handleLikeComment(comm)}
-                      className={`group flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border font-bold transition-all shrink-0 cursor-pointer active:scale-95 ${
-                        comm.likedBy?.includes(user.id)
-                          ? 'bg-rose-100 border-rose-300 text-rose-800 hover:bg-rose-200'
-                          : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
-                      }`}
-                      title={comm.likedBy?.includes(user.id) ? "ביטול לייק" : "לייק לתגובה"}
-                    >
-                      <Heart className={`w-3.5 h-3.5 transition-colors ${comm.likedBy?.includes(user.id) ? 'fill-rose-600 text-rose-600' : 'fill-transparent text-slate-400 group-hover:text-slate-600'}`} />
-                      <span>{comm.likes}</span>
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {(comm.userId === user.id || user.isAdmin) && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteComment(comm.id)}
+                          className="group flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-slate-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all cursor-pointer active:scale-95"
+                          title="מחק תגובה"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 transition-colors" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleLikeComment(comm)}
+                        className={`group flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border font-bold transition-all cursor-pointer active:scale-95 ${
+                          comm.likedBy?.includes(user.id)
+                            ? 'bg-rose-100 border-rose-300 text-rose-800 hover:bg-rose-200'
+                            : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                        title={comm.likedBy?.includes(user.id) ? "ביטול לייק" : "לייק לתגובה"}
+                      >
+                        <Heart className={`w-3.5 h-3.5 transition-colors ${comm.likedBy?.includes(user.id) ? 'fill-rose-600 text-rose-600' : 'fill-transparent text-slate-400 group-hover:text-slate-600'}`} />
+                        <span>{comm.likes || 0}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -68,7 +68,7 @@ export const sendCustomPasswordResetEmail = onCall({
         <div style="text-align: center; color: #94a3b8; font-size: 12px;">
           <p>מייל זה נשלח אוטומטית. אין להשיב אליו.</p>
           <img src="https://qnigame.com/assets/qnigame_logo_main.png" alt="Qnigame" style="height: 45px; margin: 15px 0; opacity: 0.8;" />
-          <p>© קניגיים ${new Date().getFullYear()}</p>
+          <p>© קניגיים 2024</p>
         </div>
       </div>
     `;
@@ -155,7 +155,7 @@ export const sendCustomVerificationEmail = onCall({
         <div style="text-align: center; color: #94a3b8; font-size: 12px;">
           <p>מייל זה נשלח אוטומטית. אין להשיב אליו.</p>
           <img src="https://qnigame.com/assets/qnigame_logo_main.png" alt="Qnigame" style="height: 45px; margin: 15px 0; opacity: 0.8;" />
-          <p>© קניגיים ${new Date().getFullYear()}</p>
+          <p>© קניגיים 2024</p>
         </div>
       </div>
     `;

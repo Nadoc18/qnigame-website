@@ -140,7 +140,6 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
           throw new Error('הסיסמאות אינן תואמות. אנא ודא שהסיסמאות זהות.');
         }
         await registerWithEmail(email, password);
-        soundManager.playCorrect();
         
         // Immediately send verification email
         if (auth.currentUser) {

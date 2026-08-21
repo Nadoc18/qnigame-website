@@ -698,7 +698,7 @@ export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user, al
                   <h2 className="font-bold text-slate-700">כל המשחקים ({allGames.length})</h2>
                   <button
                     onClick={() => setEditingGame({
-                      title: '', subtitle: '', description: '', longDescription: '', author: '', externalUrl: '', iconName: 'gamepad', accessLevel: 'FREE', category: ['הכל'], gameType: ['html5'], ageRating: 'לכל המשפחה', isHtml5: true, isAdminOnly: false, instructions: [], tags: [], thumbnailBg: 'from-emerald-600 to-teal-800', difficulty: 'לכל המשפחה', isNew: true, requiresAuth: true, tokenSupported: false
+                      title: '', subtitle: '', description: '', longDescription: '', author: '', externalUrl: '', iconName: 'gamepad', accessLevel: 'FREE', category: ['הכל'], gameType: ['html5'], ageRating: 'לכל המשפחה', isHtml5: true, isAdminOnly: false, instructions: [], tags: [], thumbnailBg: 'from-emerald-600 to-teal-800', difficulty: 'לכל המשפחה', isNew: true, requiresAuth: true, tokenSupported: false, aspectRatio: '16/9'
                     })}
                     className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-xl font-black text-sm shadow-md hover:shadow-lg transition-all"
                   >

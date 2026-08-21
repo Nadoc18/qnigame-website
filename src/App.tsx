@@ -24,7 +24,7 @@ import { INITIAL_BADGES } from './data/badgesData';
 import { Game, GameCategory, UserProfile, NewsArticle, SubscriptionTier } from './types';
 import { soundManager } from './utils/audio';
 import { cloudGamesService } from './services/cloudGamesService';
-import { auth, syncUserProfile, saveUserProfileToFirestore, saveGameProgressToFirestore, subscribeToUserProfile, updateLeaderboardEntry, subscribeToNewsArticles, subscribeToGlobalSettings } from './lib/firebase';
+import { auth, syncUserProfile, saveUserProfileToFirestore, saveGameProgressToFirestore, subscribeToUserProfile, updateLeaderboardEntry, subscribeToNewsArticles, subscribeToGlobalSettings, addNewsArticleLike } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 import { getShabbatTimes, ShabbatInfo } from './utils/shabbat';
@@ -216,6 +216,22 @@ export default function App() {
             isFirebaseUser: true,
           });
 
+          // Merge Guest News Likes
+          try {
+            const guestLikesRaw = localStorage.getItem('qnigame_guest_news_likes');
+            if (guestLikesRaw) {
+              const guestLikes = JSON.parse(guestLikesRaw);
+              if (Array.isArray(guestLikes)) {
+                for (const newsId of guestLikes) {
+                  await addNewsArticleLike(newsId, fbUser.uid).catch(console.error);
+                }
+              }
+              localStorage.removeItem('qnigame_guest_news_likes');
+            }
+          } catch (e) {
+            console.error("Failed to merge guest likes", e);
+          }
+
           // Ensure the user is ALWAYS in the public leaderboard when they log in
           updateLeaderboardEntry({ ...syncedProfile, isFirebaseUser: true }).catch(() => {});
 
@@ -295,7 +311,7 @@ export default function App() {
     return 'בחור כהלכה';
   };
 
-  const handleRecordScore = (gameId: string, score: number) => {
+  const handleRecordScore = (gameId: string, pointsToAdd: number = 0, newHighScoreAttempt: number = 0) => {
     setUser((prev) => {
       const currentStat = prev.gameStats[gameId] || {
         gameId,
@@ -305,9 +321,8 @@ export default function App() {
         lastPlayed: 'עכשיו',
       };
 
-      const newHighScore = Math.max(currentStat.highScore, score);
-      const diff = score - currentStat.highScore;
-      const earnedPoints = diff > 0 ? diff : 0;
+      const newHighScore = Math.max(currentStat.highScore, newHighScoreAttempt);
+      const earnedPoints = pointsToAdd;
       
       const newPoints = prev.points + earnedPoints;
       const newCoins = prev.coins; // Coins feature removed as per user request
@@ -319,11 +334,14 @@ export default function App() {
 
       const events: BadgeEvent[] = [
         { type: 'GAME_PLAYED', gameId, gameTags: gameInfo?.tags },
-        { type: 'HIGH_SCORE', gameId, value: score, gameTags: gameInfo?.tags }
       ];
+      
+      if (newHighScoreAttempt > 0) {
+        events.push({ type: 'HIGH_SCORE', gameId, value: newHighScoreAttempt, gameTags: gameInfo?.tags });
+      }
 
       // Temporary specific mappings based on gameId until Unity sends explicit events
-      if (gameId === 'trivia') events.push({ type: 'TRIVIA_STREAK', gameId, value: Math.floor(score / 10) }); // Assume 1 streak = 10 pts
+      if (gameId === 'trivia') events.push({ type: 'TRIVIA_STREAK', gameId, value: Math.floor(pointsToAdd) }); // Assume 1 streak = 10 pts
       if (gameId === 'shabbat') events.push({ type: 'SHABBAT_COMPLETED', gameId });
       if (gameId === 'menorah_puzzle') events.push({ type: 'MENORAH_SOLVED', gameId, value: 3 }); // Hard mode assumed
       if (gameId === 'tanach_wordle') events.push({ type: 'WORDLE_WON', gameId });

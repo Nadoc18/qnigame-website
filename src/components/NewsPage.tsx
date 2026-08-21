@@ -35,11 +35,38 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId,
 
   const filtered = articles.filter(a => activeCategory === 'הכל' || a.category === activeCategory);
 
+  const [guestLikes, setGuestLikes] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('qnigame_guest_news_likes');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const isLiked = (item: NewsArticle) => {
+    if (user?.isFirebaseUser) {
+      return item.likedBy?.includes(user.id) || false;
+    }
+    return guestLikes.includes(item.id);
+  };
+
+  const getLikesCount = (item: NewsArticle) => {
+    const dbLikes = item.likes || 0;
+    if (user?.isFirebaseUser) return dbLikes;
+    return guestLikes.includes(item.id) ? dbLikes + 1 : dbLikes;
+  };
+
   const handleLike = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     soundManager.playClick();
     if (!user || !user.isFirebaseUser) {
-      if (onOpenAuthModal) onOpenAuthModal();
+      setGuestLikes(prev => {
+        const currentlyLiked = prev.includes(id);
+        const newLikes = currentlyLiked ? prev.filter(l => l !== id) : [...prev, id];
+        localStorage.setItem('qnigame_guest_news_likes', JSON.stringify(newLikes));
+        return newLikes;
+      });
       return;
     }
     toggleNewsArticleLike(id, user.id);
@@ -133,12 +160,12 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId,
                 </span>
               </div>
 
-              <h2 className="font-black text-slate-900 text-lg group-hover:text-[#2fab65] transition-colors line-clamp-2">
+              <h2 className="font-black text-slate-900 text-2xl group-hover:text-[#2fab65] transition-colors line-clamp-2">
                 {item.title}
               </h2>
 
-              <p className="text-xs text-slate-600 font-medium line-clamp-3 leading-relaxed">
-                {item.excerpt}
+              <p className="text-sm sm:text-base text-slate-600 font-medium line-clamp-3 leading-relaxed">
+                {item.excerpt || item.content}
               </p>
             </div>
 
@@ -151,12 +178,12 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId,
               <div className="flex items-center gap-3">
                 <button
                   onClick={(e) => handleLike(item.id, e)}
-                  className={`flex items-center gap-1 transition-colors ${item.likedBy?.includes(user?.id || '') ? 'text-[#c99719]' : 'text-slate-400 hover:text-[#c99719]'}`}
+                  className={`flex items-center gap-1 transition-colors ${isLiked(item) ? 'text-[#c99719]' : 'text-slate-400 hover:text-[#c99719]'}`}
                 >
-                  <ThumbsUp className={`w-3.5 h-3.5 ${item.likedBy?.includes(user?.id || '') ? 'fill-[#c99719]' : ''}`} />
+                  <ThumbsUp className={`w-3.5 h-3.5 ${isLiked(item) ? 'fill-[#c99719]' : ''}`} />
                   <span className="flex items-center gap-1">
-                    {item.likes || 0}
-                    {item.likedBy?.includes(user?.id || '') && (
+                    {getLikesCount(item)}
+                    {isLiked(item) && (
                       <span className="text-[10px] bg-[#c99719]/15 px-1.5 py-0.5 rounded font-bold">אהבת</span>
                     )}
                   </span>
@@ -274,13 +301,13 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId,
               <button
                 onClick={(e) => handleLike(readingArticle.id, e)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm ${
-                  readingArticle.likedBy?.includes(user?.id || '') 
+                  isLiked(readingArticle) 
                     ? 'bg-[#c99719]/20 border-[#c99719]/60 text-[#a37812]' 
                     : 'bg-[#c99719]/15 border-[#c99719]/40 text-[#8c670d] hover:bg-[#c99719]/25'
                 }`}
               >
-                <ThumbsUp className={`w-4 h-4 ${readingArticle.likedBy?.includes(user?.id || '') ? 'fill-[#c99719]' : ''}`} />
-                <span>{readingArticle.likedBy?.includes(user?.id || '') ? 'אהבת את הכתבה!' : 'לייק לכתבה'} ({readingArticle.likes || 0})</span>
+                <ThumbsUp className={`w-4 h-4 ${isLiked(readingArticle) ? 'fill-[#c99719]' : ''}`} />
+                <span>{isLiked(readingArticle) ? 'אהבת את הכתבה!' : 'לייק לכתבה'} ({getLikesCount(readingArticle)})</span>
               </button>
 
               <button

@@ -140,10 +140,10 @@ export const incrementGameStats = async (gameId: string, playCountInc: number, t
   if (!gameId) return;
   try {
     const gameRef = doc(db, 'games', gameId);
-    await updateDoc(gameRef, {
+    await setDoc(gameRef, {
       playCount: increment(playCountInc),
       totalTimePlayed: increment(timePlayedSecs)
-    });
+    }, { merge: true });
   } catch (error) {
     console.warn('Failed to increment game stats in Firestore:', error);
   }
@@ -231,13 +231,12 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       level: levelInfo.level,
       points: pts,
       coins: data.coins || 0,
-      avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
+      avatarIcon: data.avatarIcon || '/avatars/shofar.png',
       avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
       joinedDate: data.joinedDate || new Date().toLocaleDateString('he-IL'),
       favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
       badges: Array.isArray(data.badges) ? data.badges : (defaultInitialUser?.badges || []),
       gameStats: data.gameStats || (defaultInitialUser?.gameStats || {}),
-      gameProgress: data.gameProgress || {},
       bio: data.bio || 'שוקד על דברי תורה וערכים בקניגיים.',
       shabbatModeEnabled: data.shabbatModeEnabled ?? false,
       soundEnabled: data.soundEnabled ?? true,
@@ -403,13 +402,12 @@ export const subscribeToUserProfile = (userId: string, callback: (profile: Parti
           level: levelInfo.level,
           points: pts,
           coins: data.coins || 0,
-          avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
+          avatarIcon: data.avatarIcon || '/avatars/shofar.png',
           avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
           joinedDate: data.joinedDate || new Date().toLocaleDateString('he-IL'),
           favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
           badges: Array.isArray(data.badges) ? data.badges : [],
           gameStats: data.gameStats || {},
-          gameProgress: data.gameProgress || {},
           bio: data.bio || 'שוקד על דברי תורה וערכים בקניגיים.',
           shabbatModeEnabled: data.shabbatModeEnabled ?? false,
           soundEnabled: data.soundEnabled ?? true,
@@ -585,6 +583,31 @@ export const toggleNewsArticleLike = async (articleId: string, userId: string) =
 };
 
 /**
+ * Add like for a news article (used when merging guest likes upon login)
+ */
+export const addNewsArticleLike = async (articleId: string, userId: string) => {
+  if (!articleId || !userId || isQuotaExceeded) return;
+  try {
+    const articleRef = doc(db, 'newsArticles', articleId);
+    
+    const articleDoc = await getDoc(articleRef);
+    if (!articleDoc.exists()) return;
+    
+    const data = articleDoc.data();
+    const likedBy: string[] = data.likedBy || [];
+    if (likedBy.includes(userId)) return; // Already liked
+    
+    await updateDoc(articleRef, {
+      likedBy: arrayUnion(userId),
+      likes: increment(1)
+    });
+  } catch (error) {
+    if (checkAndHandleQuotaError(error)) return;
+    logError('Error adding news article like:', error);
+  }
+};
+
+/**
  * Admin: Create a new news article
  */
 /**
@@ -684,15 +707,16 @@ export const createGame = async (gameData: Partial<Game>) => {
     rating: 5,
     comments: [],
   };
-  await setDoc(docRef, newGame);
-  return newGame;
+  const cleanData = Object.fromEntries(Object.entries(newGame).filter(([_, v]) => v !== undefined));
+  await setDoc(docRef, cleanData);
+  return cleanData as Game;
 };
 
 export const updateGame = async (gameId: string, gameData: Partial<Game>) => {
   if (!gameId || isQuotaExceeded) throw new Error("Invalid ID or Quota exceeded");
   const gameRef = doc(db, 'games', gameId);
   const cleanData = Object.fromEntries(Object.entries(gameData).filter(([_, v]) => v !== undefined));
-  await updateDoc(gameRef, cleanData);
+  await setDoc(gameRef, cleanData, { merge: true });
 };
 
 export const deleteGame = async (gameId: string) => {
@@ -739,6 +763,24 @@ export const addGameCommentToFirestore = async (
       return 'local-comment-id';
     }
     logError('Error adding comment to Firestore:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a comment from Firestore
+ */
+export const deleteGameCommentFromFirestore = async (commentId: string) => {
+  if (isQuotaExceeded) {
+    console.warn('Comment deletion skipped due to quota limits.');
+    return;
+  }
+  try {
+    const commentRef = doc(db, 'gameComments', commentId);
+    await deleteDoc(commentRef);
+  } catch (error) {
+    if (checkAndHandleQuotaError(error)) return;
+    logError('Error deleting comment from Firestore:', error);
     throw error;
   }
 };
@@ -938,7 +980,7 @@ export const updateLeaderboardEntry = async (userProfile: UserProfile) => {
       title: levelInfo.title,
       level: levelInfo.level,
       points: userProfile.points || 0,
-      avatarIcon: userProfile.avatarIcon || '/avatars/shofar.jpg',
+      avatarIcon: userProfile.avatarIcon || '/avatars/shofar.png',
       badgeCount,
       playsCount,
       gameStats: userProfile.gameStats || {},
@@ -974,7 +1016,7 @@ export const subscribeToLeaderboard = (
             title: data.title || 'תלמיד חכם',
             level: data.level || 1,
             points: data.points || 0,
-            avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
+            avatarIcon: data.avatarIcon || '/avatars/shofar.png',
             badgeCount: data.badgeCount || 0,
             playsCount: data.playsCount || 0,
             updatedAt: data.updatedAt,
@@ -1022,7 +1064,7 @@ export const subscribeToGameLeaderboard = (
               title: data.title || 'תלמיד חכם',
               level: data.level || 1,
               points: highScore,
-              avatarIcon: data.avatarIcon || '/avatars/shofar.jpg',
+              avatarIcon: data.avatarIcon || '/avatars/shofar.png',
               badgeCount: data.badgeCount || 0,
               playsCount: data.gameStats?.[gameId]?.playsCount || 0
             });
@@ -1031,7 +1073,7 @@ export const subscribeToGameLeaderboard = (
         
         // Sort descending locally and slice
         list.sort((a, b) => b.points - a.points);
-        callback(list.slice(0, limitCount));
+        callback(limitCount > 0 ? list.slice(0, limitCount) : list);
       },
       (error) => {
         checkAndHandleQuotaError(error);

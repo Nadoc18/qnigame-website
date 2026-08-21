@@ -96,6 +96,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [selectedGameModal, setSelectedGameModal] = useState<Game | null>(null);
 
+  const [guestLikes, setGuestLikes] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('qnigame_guest_news_likes');
+      if (saved) {
+        setGuestLikes(JSON.parse(saved));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const isLiked = (item: NewsArticle) => {
+    if (user?.isFirebaseUser) {
+      return item.likedBy?.includes(user.id) || false;
+    }
+    return guestLikes.includes(item.id);
+  };
+
   // Auto-filter by user age when it loads
   useEffect(() => {
     if (user && user.age) {
@@ -197,7 +217,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h1>
 
             <p className="text-emerald-100 text-base sm:text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium">
-              ספריית משחקי דפדפן אינטראקטיביים בתנ״ך, פרשת השבוע, הלכה, ברכות ,שבת קודש ועוד.
+              ספריית משחקי דפדפן אינטראקטיביים בתנ״ך, משנה, גמרא, הלכה, מוסר, חסידות ועוד.
               שחק באופן מיידי, צבור נקודות ותגים, והתקדם בדרגות התורה והדעת!
             </p>
 
@@ -226,8 +246,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <div className="text-xs text-emerald-200 font-semibold">משחקים חינמיים</div>
               </div>
               <div>
-                <div className="text-2xl font-black text-[#c99719]">50K+</div>
-                <div className="text-xs text-emerald-200 font-semibold">משחקים שנערכו</div>
+                <div className="text-2xl font-black text-[#c99719]">24/6</div>
+                <div className="text-xs text-emerald-200 font-semibold">זמינות מכל מכשיר</div>
               </div>
               <div>
                 <div className="text-2xl font-black text-[#c99719]">100%</div>
@@ -245,11 +265,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               className="relative group bg-white/95 border-2 border-[#c99719] hover:border-[#e5af24] rounded-3xl shadow-2xl transition-all overflow-hidden cursor-pointer"
             >
               {featuredGame.isNew && (
-                <div className="absolute top-4 right-4 z-20 bg-rose-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-md">
+                <div className="absolute top-4 right-4 z-20 bg-rose-500 text-white text-sm sm:text-base font-black px-4 py-1.5 rounded-full shadow-md">
                   חדש
                 </div>
               )}
-              <div className="absolute top-4 left-4 z-10 bg-[#c99719] text-[#2f4d21] text-xs font-black px-3 py-1 rounded-full shadow-md">
+              <div className="absolute top-4 left-4 z-10 bg-[#c99719] text-[#2f4d21] text-sm sm:text-base font-black px-4 py-1.5 rounded-full shadow-md">
                 🔥 משחק השבוע
               </div>
 
@@ -563,18 +583,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <span className="text-slate-400 font-medium">{item.date}</span>
                   </div>
 
-                  <h3 className="font-black text-slate-900 text-base group-hover:text-[#2fab65] transition-colors line-clamp-2">
+                  <h3 className="font-black text-slate-900 text-xl sm:text-2xl group-hover:text-[#2fab65] transition-colors line-clamp-2">
                     {item.title}
                   </h3>
 
-                  <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed font-medium flex-1">
-                    {item.excerpt}
+                  <p className="text-sm sm:text-base text-slate-600 line-clamp-3 leading-relaxed font-medium flex-1">
+                    {item.excerpt || item.content}
                   </p>
 
                   <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold">
                     <div className="flex items-center gap-1">
                       <span>מאת: {item.author}</span>
-                      {user?.id && item.likedBy?.includes(user.id) && (
+                      {isLiked(item) && (
                         <span className="mr-2 text-[#c99719] flex items-center gap-1 bg-[#c99719]/10 px-1.5 py-0.5 rounded">
                           <ThumbsUp className="w-3 h-3 fill-[#c99719]" />
                           <span>אהבת</span>

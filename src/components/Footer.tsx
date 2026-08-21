@@ -119,7 +119,7 @@ export const Footer: React.FC<FooterProps> = ({ shabbatInfo }) => {
 
       <div className="max-w-7xl mx-auto pt-6 border-t border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between text-xs text-emerald-300/80 gap-4 font-bold relative z-10">
         <div>
-          © {new Date().getFullYear()} קניגיים Qnigame .כל הזכויות שמורות.
+          © 2024 קניגיים Qnigame .כל הזכויות שמורות.
         </div>
         <div className="flex items-center gap-1 text-emerald-200">
           <span>נבנה באהבה ללומדי התורה וילדי ישראל</span>
