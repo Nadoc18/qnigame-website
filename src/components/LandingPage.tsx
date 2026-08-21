@@ -176,6 +176,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const featuredGames = featuredGamesList.length > 0 ? featuredGamesList : games.slice(0, 3);
   const featuredGame = featuredGames[featuredIndex] || games[0];
 
+  if (!featuredGame) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-8 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-[#c99719] rounded-full animate-spin mx-auto"></div>
+        <h2 className="text-lg font-bold text-slate-600">טוען משחקים מהשרת...</h2>
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (featuredGames.length <= 1) return;
     const timer = setInterval(() => {
