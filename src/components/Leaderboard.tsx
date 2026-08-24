@@ -25,7 +25,7 @@ const EMOJI_TO_IMAGE: Record<string, string> = {
 
 const getAvatarImage = (avatar: string | undefined): string => {
   if (!avatar) return '/player-icons/shofar.png';
-  if (avatar.startsWith('/')) return avatar;
+  if (avatar.startsWith('/')) return avatar.replace('/avatars/', '/player-icons/').replace('.jpg', '.png');
   return EMOJI_TO_IMAGE[avatar] || '/player-icons/shofar.png';
 };
 

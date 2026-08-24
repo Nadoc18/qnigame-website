@@ -35,7 +35,7 @@ const EMOJI_TO_IMAGE: Record<string, string> = {
 
 const getAvatarImage = (avatar: string | undefined): string => {
   if (!avatar) return '/player-icons/shofar.png';
-  if (avatar.startsWith('/')) return avatar;
+  if (avatar.startsWith('/')) return avatar.replace('/avatars/', '/player-icons/').replace('.jpg', '.png');
   return EMOJI_TO_IMAGE[avatar] || '/player-icons/shofar.png';
 };
 
@@ -156,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {/* Account Tab - Only when user is logged in */}
-            {user.isFirebaseUser && (
+            {user?.isFirebaseUser && (
               <button
                 onClick={() => { setActiveTab('account'); soundManager.playClick(); }}
                 className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-lg transition-all duration-200 ${
@@ -171,7 +171,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
 
             {/* Admin Tab - Only when user is logged in AND is admin */}
-            {user.isAdmin && (
+            {user?.isAdmin && (
               <button
                 onClick={() => { setActiveTab('admin-secret-qni-8x7a9'); soundManager.playClick(); }}
                 className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl font-black text-xs sm:text-lg transition-all duration-200 ${
@@ -188,7 +188,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Account Login / Status Button */}
             <button
               onClick={() => {
-                if (user.isFirebaseUser) {
+                if (user?.isFirebaseUser) {
                   setActiveTab('account');
                 } else if (onOpenAuthModal) {
                   onOpenAuthModal();
@@ -196,40 +196,40 @@ export const Header: React.FC<HeaderProps> = ({
                 soundManager.playClick();
               }}
               className={`hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm lg:text-lg font-black transition-all border ${
-                user.isFirebaseUser
+                user?.isFirebaseUser
                   ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 hover:bg-emerald-500/30'
                   : 'bg-amber-500/20 border-amber-400/50 text-amber-300 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,194,66,0.2)]'
               }`}
-              title={user.isFirebaseUser ? `מחובר בתור ${user.username || user.email}` : 'לחץ להתחברות לחשבון'}
+              title={user?.isFirebaseUser ? `מחובר בתור ${user?.username || user?.email}` : 'לחץ להתחברות לחשבון'}
             >
-              <UserCheck className={`w-5 h-5 shrink-0 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
+              <UserCheck className={`w-5 h-5 shrink-0 ${user?.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
               <div className="flex items-center gap-1.5 truncate max-w-[100px] lg:max-w-[150px]">
                 <span className="truncate">
-                  {user.isFirebaseUser ? (user.username && user.username.length > 12 ? user.username.substring(0, 12) + '...' : user.username || 'מחובר') : 'התחברות'}
+                  {user?.isFirebaseUser ? (user?.username && user?.username.length > 12 ? user?.username.substring(0, 12) + '...' : user?.username || 'מחובר') : 'התחברות'}
                 </span>
-                {user.subscriptionTier === 'TIER_2' && (
+                {user?.subscriptionTier === 'TIER_2' && (
                   <Crown className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" />
                 )}
-                {user.subscriptionTier === 'TIER_1' && (
+                {user?.subscriptionTier === 'TIER_1' && (
                   <Crown className="w-4 h-4 text-slate-300 shrink-0" fill="currentColor" />
                 )}
               </div>
             </button>
 
-            {user.isFirebaseUser && (
+            {user?.isFirebaseUser && (
               <button
                 onClick={() => { setActiveTab('account'); soundManager.playClick(); }}
                 className="hidden xl:flex items-center gap-3 bg-black/40 border border-emerald-500/30 hover:border-amber-400/80 px-4 py-2 rounded-2xl transition-all shadow-md group hover:scale-105"
               >
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-xs font-black text-slate-950 shadow-inner overflow-hidden group-hover:rotate-12 transition-transform">
-                  <img src={getAvatarImage(user.avatarIcon)} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={getAvatarImage(user?.avatarIcon)} alt="Avatar" className="w-full h-full object-cover" />
                 </div>
                 <div className="text-right leading-none">
                   <div className="text-sm font-black text-[#f5c242] flex items-center gap-1.5">
-                    <span>{user.points}</span>
+                    <span>{user?.points}</span>
                     <span className="text-xs text-amber-200/80">נק׳</span>
                   </div>
-                  <div className="text-xs text-emerald-300 font-bold truncate max-w-[100px] mt-1">{user.title}</div>
+                  <div className="text-xs text-emerald-300 font-bold truncate max-w-[100px] mt-1">{user?.title}</div>
                 </div>
               </button>
             )}
@@ -250,7 +250,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="md:hidden pb-3.5 flex items-center gap-2">
           <button
             onClick={() => {
-              if (user.isFirebaseUser) {
+              if (user?.isFirebaseUser) {
                 setActiveTab('account');
               } else if (onOpenAuthModal) {
                 onOpenAuthModal();
@@ -258,21 +258,21 @@ export const Header: React.FC<HeaderProps> = ({
               soundManager.playClick();
             }}
             className={`flex shrink-0 items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all border ${
-              user.isFirebaseUser
+              user?.isFirebaseUser
                 ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 hover:bg-emerald-500/30'
                 : 'bg-amber-500/20 border-amber-400/50 text-amber-300 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,194,66,0.2)]'
             }`}
-            title={user.isFirebaseUser ? `מחובר בתור ${user.username || user.email}` : 'לחץ להתחברות לחשבון'}
+            title={user?.isFirebaseUser ? `מחובר בתור ${user?.username || user?.email}` : 'לחץ להתחברות לחשבון'}
           >
-            <UserCheck className={`w-4 h-4 shrink-0 ${user.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
+            <UserCheck className={`w-4 h-4 shrink-0 ${user?.isFirebaseUser ? 'text-emerald-400' : 'text-amber-400'}`} />
             <div className="flex items-center gap-1 truncate max-w-[90px]">
               <span className="truncate text-xs">
-                {user.isFirebaseUser ? (user.username && user.username.length > 12 ? user.username.substring(0, 12) + '...' : user.username || 'מחובר') : 'התחברות'}
+                {user?.isFirebaseUser ? (user?.username && user?.username.length > 12 ? user?.username.substring(0, 12) + '...' : user?.username || 'מחובר') : 'התחברות'}
               </span>
-              {user.subscriptionTier === 'TIER_2' && (
+              {user?.subscriptionTier === 'TIER_2' && (
                 <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" />
               )}
-              {user.subscriptionTier === 'TIER_1' && (
+              {user?.subscriptionTier === 'TIER_1' && (
                 <Crown className="w-3.5 h-3.5 text-slate-300 shrink-0" fill="currentColor" />
               )}
             </div>

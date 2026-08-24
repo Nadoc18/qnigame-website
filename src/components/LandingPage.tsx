@@ -375,7 +375,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <option value="popular">הפופולריים ביותר (מספר משחקים)</option>
                 <option value="rating">המדורגים ביותר</option>
                 <option value="new">חדשים ראשונים</option>
-                {user.isAdmin && (
+                {user?.isAdmin && (
                   <option value="play_time">זמן משחק כולל (מנהל)</option>
                 )}
               </select>

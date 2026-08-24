@@ -186,24 +186,25 @@ export const cleanupOrphans = onRequest(async (req, res) => {
     // 1. Fetch all auth users
     const listUsersResult = await auth.listUsers();
     const validAuthUids = new Set(listUsersResult.users.map((u: any) => u.uid));
-    
-    // We also need to consider anonymous users if they are in auth?
-    // listUsers() returns all users, including anonymous.
 
-    let deletedUsersCount = 0;
-    let deletedLeaderboardCount = 0;
-
-    // 2. Cleanup 'users' collection
+    // 2. Fetch all firestore users
     const usersSnapshot = await db.collection('users').get();
+    const validFirestoreUids = new Set(usersSnapshot.docs.map(doc => doc.id));
+    
+    let deletedFirestoreUsersCount = 0;
+    let deletedLeaderboardCount = 0;
+    let deletedAuthUsersCount = 0;
+
+    // 3. Cleanup 'users' collection (delete Firestore docs without Auth user)
     for (const doc of usersSnapshot.docs) {
       if (!validAuthUids.has(doc.id)) {
         await doc.ref.delete();
-        deletedUsersCount++;
+        deletedFirestoreUsersCount++;
         console.log(`Deleted orphaned user doc: ${doc.id}`);
       }
     }
 
-    // 3. Cleanup 'leaderboard' collection
+    // 4. Cleanup 'leaderboard' collection
     const leaderboardSnapshot = await db.collection('leaderboard').get();
     for (const doc of leaderboardSnapshot.docs) {
       if (!validAuthUids.has(doc.id)) {
@@ -213,14 +214,21 @@ export const cleanupOrphans = onRequest(async (req, res) => {
       }
     }
 
-    // We could also clean up comments, but comments are inside games.
-    // That requires querying all games and all comments subcollections.
-    // It's usually fine to leave orphaned comments, or we can clean them too.
+    // 5. Cleanup Auth users (delete Auth users without Firestore doc)
+    // NOTE: Only delete if they are not admin or something, but our users MUST have a firestore doc.
+    for (const userRecord of listUsersResult.users) {
+      if (!validFirestoreUids.has(userRecord.uid)) {
+        await auth.deleteUser(userRecord.uid);
+        deletedAuthUsersCount++;
+        console.log(`Deleted orphaned auth user: ${userRecord.email} (${userRecord.uid})`);
+      }
+    }
     
     res.status(200).send(`
       <h1>Cleanup Complete!</h1>
-      <p>Deleted orphaned users: ${deletedUsersCount}</p>
-      <p>Deleted orphaned leaderboard entries: ${deletedLeaderboardCount}</p>
+      <p>Deleted orphaned Firestore users: ${deletedFirestoreUsersCount}</p>
+      <p>Deleted orphaned Firestore leaderboard entries: ${deletedLeaderboardCount}</p>
+      <p>Deleted orphaned Auth users: ${deletedAuthUsersCount}</p>
     `);
   } catch (error) {
     console.error('Cleanup error:', error);

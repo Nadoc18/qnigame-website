@@ -532,9 +532,20 @@ export default function App() {
     return (
       <VerifyEmailPage 
         oobCode={verifyEmailOobCode} 
-        onContinue={() => {
+        onContinue={async () => {
           setVerifyEmailOobCode(null);
           window.history.replaceState({}, document.title, window.location.pathname);
+          if (auth.currentUser) {
+            await auth.currentUser.reload();
+            if (auth.currentUser.emailVerified) {
+              await handleAuthSuccess();
+              // If they haven't finished onboarding, open the modal so they can complete it
+              setIsAuthModalOpen(true);
+            }
+          } else {
+            // If they verified on a different device/browser where they aren't signed in
+            setIsAuthModalOpen(true);
+          }
         }}
       />
     );
@@ -577,11 +588,13 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => {
           setIsAuthModalOpen(false);
+          setVerifyEmailOobCode(null);
           setAuthCustomMsg(undefined);
         }}
         currentUser={user}
-        customMessage={authCustomMsg}
+        setUser={setUser}
         onAuthSuccess={handleAuthSuccess}
+        customMessage={authCustomMsg}
         onQuickTestLogin={handleQuickTestLogin}
       />
 

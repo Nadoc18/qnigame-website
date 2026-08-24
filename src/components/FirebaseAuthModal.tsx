@@ -49,6 +49,7 @@ interface FirebaseAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: UserProfile;
+  setUser?: React.Dispatch<React.SetStateAction<UserProfile>>;
   onAuthSuccess?: () => void;
   customMessage?: string;
   onQuickTestLogin?: () => void;
@@ -58,6 +59,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   isOpen,
   onClose,
   currentUser,
+  setUser,
   onAuthSuccess,
   customMessage,
   onQuickTestLogin,
@@ -241,7 +243,11 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
         isFirebaseUser: true,
       };
 
-      await saveUserProfileToFirestore(updatedProfile);
+      if (setUser) {
+        setUser(updatedProfile);
+      }
+
+      await saveUserProfileToFirestore(updatedProfile, true);
       
       setSuccessMsg('פרופיל השחקן שלך הוגדר בהצלחה! 🎉');
     } catch (err: any) {

@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -35,10 +36,14 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR configuration with dynamic fallback port if 24678 is occupied
       hmr: process.env.DISABLE_HMR === 'true' ? false : { port: 0 },
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/setupTests.ts'],
+      pool: 'threads',
     },
   };
 });
