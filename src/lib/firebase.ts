@@ -351,9 +351,12 @@ export const saveUserProfileToFirestore = async (userProfile: UserProfile, immed
     pendingProfileToSave = null;
 
     try {
+      // Exclude isAdmin so we don't trigger Firestore security rules on update
+      const { isAdmin, isFirebaseUser, ...restProfile } = profileToSave;
+
       const userRef = doc(db, 'users', profileToSave.id);
       const docData = cleanFirestoreData({
-        ...profileToSave,
+        ...restProfile,
         uid: profileToSave.id,
         updatedAt: new Date().toISOString()
       });
