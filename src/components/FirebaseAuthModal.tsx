@@ -174,7 +174,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
         message = 'כתובת האימייל או הסיסמה אינם נכונים.';
       } else if (err.code === 'auth/email-already-in-use') {
-        message = 'כתובת האימייל כבר רשומה במערכת.';
+        message = 'כתובת האימייל כבר רשומה במערכת. אנא עבור ללשונית "התחברות" כדי להיכנס ולסיים את אימות המייל.';
       } else if (err.code === 'auth/weak-password') {
         message = 'הסיסמה חלשה מדי. נדרשים לפחות 6 תווים.';
       } else if (err.code === 'auth/invalid-email') {
@@ -229,6 +229,30 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       setErrorMsg('אירעה שגיאה בבדיקת אימות האימייל.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (auth.currentUser) {
+      setLoading(true);
+      setErrorMsg(null);
+      try {
+        const { getFunctions, httpsCallable } = await import('firebase/functions');
+        const functions = getFunctions();
+        const sendCustomVerificationEmail = httpsCallable(functions, 'sendCustomVerificationEmail');
+        await sendCustomVerificationEmail({ email: auth.currentUser.email });
+        setSuccessMsg('מייל אימות חדש נשלח לכתובת שלך!');
+      } catch (e) {
+        try {
+          const { sendEmailVerification } = await import('firebase/auth');
+          await sendEmailVerification(auth.currentUser);
+          setSuccessMsg('מייל אימות חדש נשלח לכתובת שלך!');
+        } catch (fallbackErr: any) {
+          setErrorMsg('לא ניתן לשלוח מייל כעת, נסה שוב מאוחר יותר.');
+        }
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -391,16 +415,28 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
                 )}
               </button>
 
-              <button
-                onClick={() => {
-                  setIsAwaitingVerification(false);
-                  logout(); // log them out explicitly so they can start over
-                  resetForm();
-                }}
-                className="text-slate-500 hover:text-slate-800 text-sm font-medium"
-              >
-                חזור אחורה / נסה שוב
-              </button>
+              <div className="flex items-center justify-between px-4">
+                <button
+                  type="button"
+                  onClick={handleResendEmail}
+                  disabled={loading}
+                  className="text-indigo-600 hover:text-indigo-800 text-sm font-bold disabled:opacity-50"
+                >
+                  שלח שוב 📧
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAwaitingVerification(false);
+                    logout(); // log them out explicitly so they can start over
+                    resetForm();
+                  }}
+                  className="text-slate-500 hover:text-slate-800 text-sm font-medium"
+                >
+                  חזור אחורה
+                </button>
+              </div>
             </div>
         ) : isOnboarding ? (
           <form onSubmit={handleSaveOnboarding} className="space-y-4">
