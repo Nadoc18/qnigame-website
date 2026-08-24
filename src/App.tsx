@@ -41,7 +41,7 @@ const INITIAL_USER: UserProfile = {
   level: 1,
   points: 0,
   coins: 0,
-  avatarIcon: '/avatars/shofar.png',
+  avatarIcon: '/player-icons/shofar.png',
   avatarBg: 'from-amber-500 to-amber-700',
   joinedDate: '',
   favoriteGameIds: [],

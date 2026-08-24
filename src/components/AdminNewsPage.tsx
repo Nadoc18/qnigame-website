@@ -4,23 +4,23 @@ import { createNewsArticle, updateNewsArticle, deleteNewsArticle, setMaintenance
 import { Plus, Edit2, Trash2, X, Save, AlertCircle, ShieldAlert, Timer, Gamepad2, ArrowUpDown, Clock, Users, UserCheck, UserX, UserMinus, Crown, ShieldCheck, Unlock, Star } from 'lucide-react';
 
 const EMOJI_TO_IMAGE: Record<string, string> = {
-  '🎓': '/avatars/shofar.png',
-  '✡️': '/avatars/torah.png',
-  '🕍': '/avatars/kippa.png',
-  '📜': '/avatars/siddur.png',
-  '🦁': '/avatars/dreidel.png',
-  '👑': '/avatars/rimon.png',
-  '🕎': '/avatars/menorah.png',
-  '🕯️': '/avatars/shofar.png',
-  '🍷': '/avatars/tallit.png',
-  '🍯': '/avatars/tzedakah.png',
-  '✡': '/avatars/torah.png'
+  '🎓': '/player-icons/shofar.png',
+  '✡️': '/player-icons/torah.png',
+  '🕍': '/player-icons/kippa.png',
+  '📜': '/player-icons/siddur.png',
+  '🦁': '/player-icons/dreidel.png',
+  '👑': '/player-icons/rimon.png',
+  '🕎': '/player-icons/menorah.png',
+  '🕯️': '/player-icons/shofar.png',
+  '🍷': '/player-icons/tallit.png',
+  '🍯': '/player-icons/tzedakah.png',
+  '✡': '/player-icons/torah.png'
 };
 
 const getAvatarImage = (avatar: string | undefined): string => {
-  if (!avatar) return '/avatars/shofar.png';
+  if (!avatar) return '/player-icons/shofar.png';
   if (avatar.startsWith('/')) return avatar;
-  return EMOJI_TO_IMAGE[avatar] || '/avatars/shofar.png';
+  return EMOJI_TO_IMAGE[avatar] || '/player-icons/shofar.png';
 };
 
 interface AdminNewsPageProps {

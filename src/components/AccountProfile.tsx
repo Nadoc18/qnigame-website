@@ -29,23 +29,23 @@ import { getLevelDetails } from '../utils/levels';
 import { formatInitials } from '../utils/format';
 
 const EMOJI_TO_IMAGE: Record<string, string> = {
-  '🎓': '/avatars/shofar.png',
-  '✡️': '/avatars/torah.png',
-  '🕍': '/avatars/kippa.png',
-  '📜': '/avatars/siddur.png',
-  '🦁': '/avatars/dreidel.png',
-  '👑': '/avatars/rimon.png',
-  '🕎': '/avatars/menorah.png',
-  '🕯️': '/avatars/shofar.png',
-  '🍷': '/avatars/tallit.png',
-  '🍯': '/avatars/tzedakah.png',
-  '✡': '/avatars/torah.png'
+  '🎓': '/player-icons/shofar.png',
+  '✡️': '/player-icons/torah.png',
+  '🕍': '/player-icons/kippa.png',
+  '📜': '/player-icons/siddur.png',
+  '🦁': '/player-icons/dreidel.png',
+  '👑': '/player-icons/rimon.png',
+  '🕎': '/player-icons/menorah.png',
+  '🕯️': '/player-icons/shofar.png',
+  '🍷': '/player-icons/tallit.png',
+  '🍯': '/player-icons/tzedakah.png',
+  '✡': '/player-icons/torah.png'
 };
 
 const getAvatarImage = (avatar: string | undefined): string => {
-  if (!avatar) return '/avatars/shofar.png';
+  if (!avatar) return '/player-icons/shofar.png';
   if (avatar.startsWith('/')) return avatar;
-  return EMOJI_TO_IMAGE[avatar] || '/avatars/shofar.png';
+  return EMOJI_TO_IMAGE[avatar] || '/player-icons/shofar.png';
 };
 
 interface AccountProfileProps {
@@ -58,16 +58,16 @@ interface AccountProfileProps {
 }
 
 const AVATAR_OPTIONS = [
-  '/avatars/shofar.png',
-  '/avatars/torah.png',
-  '/avatars/kippa.png',
-  '/avatars/menorah.png',
-  '/avatars/dreidel.png',
-  '/avatars/rimon.png',
-  '/avatars/tzedakah.png',
-  '/avatars/siddur.png',
-  '/avatars/tallit.png',
-  '/avatars/luhot.png'
+  '/player-icons/shofar.png',
+  '/player-icons/torah.png',
+  '/player-icons/kippa.png',
+  '/player-icons/menorah.png',
+  '/player-icons/dreidel.png',
+  '/player-icons/rimon.png',
+  '/player-icons/tzedakah.png',
+  '/player-icons/siddur.png',
+  '/player-icons/tallit.png',
+  '/player-icons/luhot.png'
 ];
 
 export const AccountProfile: React.FC<AccountProfileProps> = ({

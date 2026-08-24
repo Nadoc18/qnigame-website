@@ -33,16 +33,16 @@ import { UserProfile } from '../types';
 import confetti from 'canvas-confetti';
 
 const AVATAR_OPTIONS = [
-  '/avatars/shofar.png',
-  '/avatars/torah.png',
-  '/avatars/kippa.png',
-  '/avatars/menorah.png',
-  '/avatars/dreidel.png',
-  '/avatars/rimon.png',
-  '/avatars/tzedakah.png',
-  '/avatars/siddur.png',
-  '/avatars/tallit.png',
-  '/avatars/luhot.png'
+  '/player-icons/shofar.png',
+  '/player-icons/torah.png',
+  '/player-icons/kippa.png',
+  '/player-icons/menorah.png',
+  '/player-icons/dreidel.png',
+  '/player-icons/rimon.png',
+  '/player-icons/tzedakah.png',
+  '/player-icons/siddur.png',
+  '/player-icons/tallit.png',
+  '/player-icons/luhot.png'
 ];
 
 interface FirebaseAuthModalProps {
@@ -72,7 +72,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
   // Onboarding profile fields
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState('/avatars/shofar.png');
+  const [selectedAvatar, setSelectedAvatar] = useState('/player-icons/shofar.png');
   const [age, setAge] = useState<number>(10);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -86,7 +86,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       setFirstName(currentUser.firstName || '');
       setLastName(currentUser.lastName || '');
       setAge(currentUser.age || 10);
-      setSelectedAvatar(currentUser.avatarIcon || '/avatars/shofar.png');
+      setSelectedAvatar(currentUser.avatarIcon || '/player-icons/shofar.png');
     }
   }, [isOpen, currentUser.isFirebaseUser, currentUser.firstName, currentUser.lastName, currentUser.age, currentUser.avatarIcon]);
 
@@ -98,7 +98,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
     setConfirmPassword('');
     setFirstName('');
     setLastName('');
-    setSelectedAvatar('/avatars/shofar.png');
+    setSelectedAvatar('/player-icons/shofar.png');
     setAge(10);
     setIsOnboarding(false);
     setIsAwaitingVerification(false);

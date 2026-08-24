@@ -56,23 +56,23 @@ interface GamePlayerFrameProps {
 }
 
 const EMOJI_TO_IMAGE: Record<string, string> = {
-  '🎓': '/avatars/shofar.png',
-  '✡️': '/avatars/torah.png',
-  '🕍': '/avatars/kippa.png',
-  '📜': '/avatars/siddur.png',
-  '🦁': '/avatars/dreidel.png',
-  '👑': '/avatars/rimon.png',
-  '🕎': '/avatars/menorah.png',
-  '🕯️': '/avatars/shofar.png',
-  '🍷': '/avatars/tallit.png',
-  '🍯': '/avatars/tzedakah.png',
-  '✡': '/avatars/torah.png'
+  '🎓': '/player-icons/shofar.png',
+  '✡️': '/player-icons/torah.png',
+  '🕍': '/player-icons/kippa.png',
+  '📜': '/player-icons/siddur.png',
+  '🦁': '/player-icons/dreidel.png',
+  '👑': '/player-icons/rimon.png',
+  '🕎': '/player-icons/menorah.png',
+  '🕯️': '/player-icons/shofar.png',
+  '🍷': '/player-icons/tallit.png',
+  '🍯': '/player-icons/tzedakah.png',
+  '✡': '/player-icons/torah.png'
 };
 
 const getAvatarImage = (avatar: string | undefined): string => {
-  if (!avatar) return '/avatars/shofar.png';
+  if (!avatar) return '/player-icons/shofar.png';
   if (avatar.startsWith('/')) return avatar;
-  return EMOJI_TO_IMAGE[avatar] || '/avatars/shofar.png';
+  return EMOJI_TO_IMAGE[avatar] || '/player-icons/shofar.png';
 };
 
 export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
@@ -584,7 +584,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
       gameId: game.id,
       userId: user.id,
       userName: user.username || user.email?.split('@')[0] || 'שחקן',
-      userAvatar: user.avatarIcon || '/avatars/shofar.png',
+      userAvatar: user.avatarIcon || '/player-icons/shofar.png',
       userTitle: user.title || 'לומד תורה',
       rating: userRating,
       content: commentText.trim(),

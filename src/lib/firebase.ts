@@ -231,7 +231,7 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       level: levelInfo.level,
       points: pts,
       coins: data.coins || 0,
-      avatarIcon: data.avatarIcon || '/avatars/shofar.png',
+      avatarIcon: (data.avatarIcon || '/player-icons/shofar.png').replace('/avatars/', '/player-icons/'),
       avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
       joinedDate: data.joinedDate || new Date().toLocaleDateString('he-IL'),
       favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
@@ -252,7 +252,7 @@ export const syncUserProfile = async (firebaseUser: FirebaseUser, defaultInitial
       level: 1,
       points: 100,
       coins: 50,
-      avatarIcon: '/avatars/shofar.png',
+      avatarIcon: '/player-icons/shofar.png',
       avatarBg: 'from-amber-500 to-amber-700',
       joinedDate: new Date().toLocaleDateString('he-IL'),
       favoriteGameIds: [],
@@ -402,7 +402,7 @@ export const subscribeToUserProfile = (userId: string, callback: (profile: Parti
           level: levelInfo.level,
           points: pts,
           coins: data.coins || 0,
-          avatarIcon: data.avatarIcon || '/avatars/shofar.png',
+          avatarIcon: (data.avatarIcon || '/player-icons/shofar.png').replace('/avatars/', '/player-icons/'),
           avatarBg: data.avatarBg || 'from-amber-500 to-amber-700',
           joinedDate: data.joinedDate || new Date().toLocaleDateString('he-IL'),
           favoriteGameIds: Array.isArray(data.favoriteGameIds) ? data.favoriteGameIds : [],
@@ -480,7 +480,7 @@ export const subscribeToGameComments = (
             gameId: data.gameId || gameId,
             userId: data.userId,
             userName: data.userName || 'שחקן',
-            userAvatar: data.userAvatar || '/avatars/shofar.png',
+            userAvatar: (data.userAvatar || '/player-icons/shofar.png').replace('/avatars/', '/player-icons/'),
             userTitle: data.userTitle || 'לומד תורה',
             rating: data.rating || 5,
             content: data.content || '',
@@ -980,7 +980,7 @@ export const updateLeaderboardEntry = async (userProfile: UserProfile) => {
       title: levelInfo.title,
       level: levelInfo.level,
       points: userProfile.points || 0,
-      avatarIcon: userProfile.avatarIcon || '/avatars/shofar.png',
+      avatarIcon: (userProfile.avatarIcon || '/player-icons/shofar.png').replace('/avatars/', '/player-icons/'),
       badgeCount,
       playsCount,
       gameStats: userProfile.gameStats || {},
@@ -1016,7 +1016,7 @@ export const subscribeToLeaderboard = (
             title: data.title || 'תלמיד חכם',
             level: data.level || 1,
             points: data.points || 0,
-            avatarIcon: data.avatarIcon || '/avatars/shofar.png',
+            avatarIcon: (data.avatarIcon || '/player-icons/shofar.png').replace('/avatars/', '/player-icons/'),
             badgeCount: data.badgeCount || 0,
             playsCount: data.playsCount || 0,
             updatedAt: data.updatedAt,
@@ -1064,7 +1064,7 @@ export const subscribeToGameLeaderboard = (
               title: data.title || 'תלמיד חכם',
               level: data.level || 1,
               points: highScore,
-              avatarIcon: data.avatarIcon || '/avatars/shofar.png',
+              avatarIcon: (data.avatarIcon || '/player-icons/shofar.png').replace('/avatars/', '/player-icons/'),
               badgeCount: data.badgeCount || 0,
               playsCount: data.gameStats?.[gameId]?.playsCount || 0
             });
@@ -1086,17 +1086,17 @@ export const subscribeToGameLeaderboard = (
 };
 
 const EMOJI_TO_IMAGE: Record<string, string> = {
-  '🎓': '/avatars/shofar.png',
-  '✡️': '/avatars/torah.png',
-  '🕍': '/avatars/kippa.png',
-  '📜': '/avatars/siddur.png',
-  '🦁': '/avatars/dreidel.png',
-  '👑': '/avatars/rimon.png',
-  '🕎': '/avatars/menorah.png',
-  '🕯️': '/avatars/shofar.png',
-  '🍷': '/avatars/tallit.png',
-  '🍯': '/avatars/tzedakah.png',
-  '✡': '/avatars/torah.png'
+  '🎓': '/player-icons/shofar.png',
+  '✡️': '/player-icons/torah.png',
+  '🕍': '/player-icons/kippa.png',
+  '📜': '/player-icons/siddur.png',
+  '🦁': '/player-icons/dreidel.png',
+  '👑': '/player-icons/rimon.png',
+  '🕎': '/player-icons/menorah.png',
+  '🕯️': '/player-icons/shofar.png',
+  '🍷': '/player-icons/tallit.png',
+  '🍯': '/player-icons/tzedakah.png',
+  '✡': '/player-icons/torah.png'
 };
 
 export const migrateAvatarsInDB = async () => {
@@ -1109,7 +1109,7 @@ export const migrateAvatarsInDB = async () => {
   for (const d of userSnap.docs) {
     const data = d.data();
     if (data.avatarIcon && !data.avatarIcon.startsWith('/')) {
-      const newAvatar = EMOJI_TO_IMAGE[data.avatarIcon] || '/avatars/shofar.png';
+      const newAvatar = EMOJI_TO_IMAGE[data.avatarIcon] || '/player-icons/shofar.png';
       await updateDoc(doc(db, 'users', d.id), { avatarIcon: newAvatar });
       count++;
     }
@@ -1121,7 +1121,7 @@ export const migrateAvatarsInDB = async () => {
   for (const d of lbSnap.docs) {
     const data = d.data();
     if (data.avatarIcon && !data.avatarIcon.startsWith('/')) {
-      const newAvatar = EMOJI_TO_IMAGE[data.avatarIcon] || '/avatars/shofar.png';
+      const newAvatar = EMOJI_TO_IMAGE[data.avatarIcon] || '/player-icons/shofar.png';
       await updateDoc(doc(db, 'leaderboard', d.id), { avatarIcon: newAvatar });
       count++;
     }
@@ -1139,7 +1139,7 @@ export const migrateAvatarsInDB = async () => {
           needsUpdate = true;
           return {
             ...c,
-            userAvatar: EMOJI_TO_IMAGE[c.userAvatar] || '/avatars/shofar.png'
+            userAvatar: EMOJI_TO_IMAGE[c.userAvatar] || '/player-icons/shofar.png'
           };
         }
         return c;
