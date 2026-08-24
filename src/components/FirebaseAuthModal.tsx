@@ -268,7 +268,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       
       setSuccessMsg('פרופיל השחקן שלך הוגדר בהצלחה! 🎉');
     } catch (err: any) {
-      // silent
+      console.error("ONBOARDING SAVE ERROR:", err);
       setErrorMsg('אירעה שגיאה בשמירת הפרופיל.');
     } finally {
       setLoading(false);

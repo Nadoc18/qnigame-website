@@ -37,11 +37,10 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { UserProfile, Game, GameComment, NewsArticle } from '../types';
 import { getLevelDetails } from '../utils/levels';
-
-// Silent in production — only log in dev
 const isDev = import.meta.env.DEV;
+// Always log errors to help debug production issues
 const log = (...args: any[]) => { if (isDev) console.log(...args); };
-const logError = (...args: any[]) => { if (isDev) console.error(...args); };
+const logError = (...args: any[]) => { console.error(...args); };
 
 export enum OperationType {
   CREATE = 'create',
@@ -365,6 +364,7 @@ export const saveUserProfileToFirestore = async (userProfile: UserProfile, immed
     } catch (error) {
       if (checkAndHandleQuotaError(error)) return;
       logError('Error saving user profile to Firestore:', error);
+      throw error;
     }
   };
 
