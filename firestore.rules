@@ -11,10 +11,14 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId && 
                     (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
                     
-      // Users can update their own profile, but cannot modify the isAdmin field (unless they are already an admin modifying someone else's, or their own)
+      // Users can update their own profile, but cannot modify the isAdmin field (unless they are already an admin modifying someone else's, or their own, or they are just initializing it to false)
       allow update: if request.auth != null && (
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true) || 
-        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'disabled']))
+        (request.auth.uid == userId && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'disabled']) ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAdmin']) && request.resource.data.isAdmin == false && !('isAdmin' in resource.data)) ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']) && request.resource.data.isAdmin == false && !('isAdmin' in resource.data) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['disabled']))
+        ))
       );
       
       allow delete: if false; // Deletion is handled by Cloud Functions
