@@ -199,6 +199,21 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
         if (auth.currentUser.emailVerified) {
           soundManager.playCorrect();
           setIsAwaitingVerification(false);
+          // Fetch the real user profile from Firestore to replace the 'user-guest' placeholder
+          if (setUser) {
+            try {
+              // @ts-ignore
+              const { syncUserProfile, INITIAL_USER } = await import('../lib/firebase');
+              const syncedProfile = await syncUserProfile(auth.currentUser, currentUser);
+              setUser({
+                ...syncedProfile,
+                isFirebaseUser: true,
+              });
+            } catch (err) {
+              console.error(err);
+            }
+          }
+
           // Only show onboarding if they haven't set a firstName yet
           if (!currentUser.firstName) {
             setIsOnboarding(true);
@@ -233,8 +248,10 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
       confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
 
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      const realUid = auth.currentUser ? auth.currentUser.uid : currentUser.id;
       const updatedProfile: UserProfile = {
         ...currentUser,
+        id: realUid,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         age: Number(age) || 10,
