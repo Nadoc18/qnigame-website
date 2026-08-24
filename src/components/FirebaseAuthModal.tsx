@@ -202,8 +202,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({
           // Fetch the real user profile from Firestore to replace the 'user-guest' placeholder
           if (setUser) {
             try {
-              // @ts-ignore
-              const { syncUserProfile, INITIAL_USER } = await import('../lib/firebase');
+              // We use the statically imported syncUserProfile
               const syncedProfile = await syncUserProfile(auth.currentUser, currentUser);
               setUser({
                 ...syncedProfile,
