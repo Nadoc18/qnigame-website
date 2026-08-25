@@ -656,6 +656,35 @@ export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user, al
                     placeholder="הוראה 1&#10;הוראה 2&#10;הוראה 3" 
                   />
                 </div>
+
+                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      id="isComingSoon"
+                      checked={editingGame.isComingSoon === true} 
+                      onChange={e => setEditingGame({...editingGame, isComingSoon: e.target.checked})} 
+                      className="w-5 h-5 rounded text-indigo-500 focus:ring-indigo-500 border-indigo-300"
+                    />
+                    <label htmlFor="isComingSoon" className="font-bold text-indigo-900 flex items-center gap-1">
+                      🕒 משחק עתידי (בקרוב)
+                    </label>
+                  </div>
+                  
+                  {editingGame.isComingSoon && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 border-t border-indigo-100 pt-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-indigo-700">תאריך יציאה משוער (טקסט חופשי)</label>
+                        <input type="text" value={editingGame.releaseDate || ''} onChange={e => setEditingGame({...editingGame, releaseDate: e.target.value})} className="w-full p-2 border border-indigo-200 rounded-lg bg-white" placeholder="למשל: סתיו 2026, 15 באוקטובר" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-indigo-700">קישור לטריילר (YouTube, וכו')</label>
+                        <input type="text" value={editingGame.trailerUrl || ''} onChange={e => setEditingGame({...editingGame, trailerUrl: e.target.value})} className="w-full p-2 border border-indigo-200 rounded-lg bg-white text-left" dir="ltr" placeholder="https://youtube.com/watch?v=..." />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center gap-2 mt-4 pt-2">
                   <input 
                     type="checkbox" 

@@ -53,6 +53,9 @@ export interface Game {
   isNew?: boolean;
   requiresAuth?: boolean;
   tokenSupported?: boolean;
+  isComingSoon?: boolean;
+  releaseDate?: string;
+  trailerUrl?: string;
   accessLevel?: SubscriptionTier;
   isAdminOnly?: boolean;
 }

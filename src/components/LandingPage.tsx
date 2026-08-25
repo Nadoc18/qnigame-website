@@ -21,6 +21,8 @@ import {
   Lock,
   ThumbsUp,
   X,
+  Clock,
+  Video,
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import { LogoShowcaseCard, LOGO_SRC, FALLBACK_LOGO_SRC } from './QnigameLogo';
@@ -433,11 +435,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onClick={() => { soundManager.playClick(); setSelectedGameModal(game); }}
                 className="group relative bg-white border border-slate-200 hover:border-[#2fab65] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between cursor-pointer"
               >
-                {game.isNew && (
+                {game.isComingSoon ? (
+                  <div className="absolute top-4 right-4 z-20 bg-indigo-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white animate-pulse">
+                    {game.releaseDate ? `בקרוב: ${game.releaseDate}` : 'בקרוב!'}
+                  </div>
+                ) : game.isNew ? (
                   <div className="absolute top-4 right-4 z-20 bg-rose-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white animate-pulse">
                     חדש!
                   </div>
-                )}
+                ) : null}
                 <div>
                   {/* Thumbnail */}
                   <div className={`h-56 sm:h-64 bg-gradient-to-br ${getGameThumbnailBgClass(game)} p-4 flex flex-col justify-between relative overflow-hidden`}>
@@ -733,17 +739,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <span>{selectedGameModal.rating} ({selectedGameModal.ratingCount})</span>
               </div>
 
-              <button
-                onClick={() => { 
-                  soundManager.playClick(); 
-                  onSelectGame(selectedGameModal.id);
-                  setSelectedGameModal(null);
-                }}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#2fab65] hover:bg-[#28995a] text-white font-black text-sm transition-all shadow-md hover:scale-105"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                <span>שחק עכשיו</span>
-              </button>
+              {selectedGameModal.isComingSoon ? (
+                selectedGameModal.trailerUrl ? (
+                  <button
+                    onClick={() => {
+                      soundManager.playClick();
+                      window.open(selectedGameModal.trailerUrl, '_blank');
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-black text-sm transition-all shadow-md hover:scale-105"
+                  >
+                    <Video className="w-4 h-4 fill-white" />
+                    <span>צפה בטריילר</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-200 text-slate-500 font-black text-sm cursor-not-allowed">
+                    <Clock className="w-4 h-4" />
+                    <span>{selectedGameModal.releaseDate ? `בקרוב: ${selectedGameModal.releaseDate}` : 'בקרוב!'}</span>
+                  </div>
+                )
+              ) : (
+                <button
+                  onClick={() => { 
+                    soundManager.playClick(); 
+                    onSelectGame(selectedGameModal.id);
+                    setSelectedGameModal(null);
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#2fab65] hover:bg-[#28995a] text-white font-black text-sm transition-all shadow-md hover:scale-105"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>שחק עכשיו</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
