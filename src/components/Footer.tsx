@@ -54,8 +54,8 @@ export const Footer: React.FC<FooterProps> = ({ shabbatInfo }) => {
           </div>
           <div className="space-y-3 text-sm sm:text-base font-semibold">
             <div className="flex justify-between pb-2 border-b border-emerald-500/20">
-              <span className="text-emerald-300">הפעלה אוטומטית:</span>
-              <span className="text-emerald-400 font-bold">
+              <span className="text-emerald-300 whitespace-nowrap">הפעלה אוטומטית:</span>
+              <span className="text-emerald-400 font-bold whitespace-nowrap text-left max-w-[60%] truncate" title={`לפי מיקום (${shabbatInfo?.locationName || 'ירושלים'})`}>
                 לפי מיקום ({shabbatInfo?.locationName || 'ירושלים'})
               </span>
             </div>
