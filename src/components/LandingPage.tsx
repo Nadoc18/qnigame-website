@@ -436,11 +436,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 className="group relative bg-white border border-slate-200 hover:border-[#2fab65] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between cursor-pointer"
               >
                 {game.isComingSoon ? (
-                  <div className="absolute top-4 right-4 z-20 bg-indigo-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white animate-pulse">
+                  <div className="absolute top-4 right-4 z-20 bg-indigo-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white">
                     {game.releaseDate ? `בקרוב: ${game.releaseDate}` : 'בקרוב!'}
                   </div>
                 ) : game.isNew ? (
-                  <div className="absolute top-4 right-4 z-20 bg-rose-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white animate-pulse">
+                  <div className="absolute top-4 right-4 z-20 bg-rose-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white">
                     חדש!
                   </div>
                 ) : null}
@@ -703,7 +703,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </span>
                   )}
                   {selectedGameModal.isNew && (
-                    <span className="text-[11px] font-black px-3 py-1 rounded-full bg-rose-600 text-white border-2 border-white shadow-lg animate-pulse">
+                    <span className="text-[11px] font-black px-3 py-1 rounded-full bg-rose-600 text-white border-2 border-white shadow-lg">
                       חדש!
                     </span>
                   )}
