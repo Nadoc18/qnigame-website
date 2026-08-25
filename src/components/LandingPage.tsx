@@ -97,6 +97,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'new' | 'play_time'>('popular');
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [selectedGameModal, setSelectedGameModal] = useState<Game | null>(null);
+  const [isPlayingTrailer, setIsPlayingTrailer] = useState(false);
 
   const [guestLikes, setGuestLikes] = useState<string[]>([]);
 
@@ -272,7 +273,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <LogoShowcaseCard news={news} onOpenNews={onOpenNews} />
 
             <div 
-              onClick={() => { soundManager.playClick(); setSelectedGameModal(featuredGame); }}
+              onClick={() => { soundManager.playClick(); setIsPlayingTrailer(false); setSelectedGameModal(featuredGame); }}
               className="relative group bg-white/95 border-2 border-[#c99719] hover:border-[#e5af24] rounded-3xl shadow-2xl transition-all overflow-hidden cursor-pointer"
             >
               {featuredGame.isNew && (
@@ -432,7 +433,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             return (
               <div
                 key={game.id}
-                onClick={() => { soundManager.playClick(); setSelectedGameModal(game); }}
+                onClick={() => { soundManager.playClick(); setIsPlayingTrailer(false); setSelectedGameModal(game); }}
                 className="group relative bg-white border border-slate-200 hover:border-[#2fab65] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between cursor-pointer"
               >
                 {game.isComingSoon ? (
@@ -686,34 +687,47 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <X className="w-4 h-4" />
             </button>
             
-            <div className={`h-64 bg-gradient-to-br ${getGameThumbnailBgClass(selectedGameModal)} p-4 flex flex-col justify-between relative overflow-hidden`}>
-              {getGameThumbnailUrl(selectedGameModal) && (
-                <img
-                  src={getGameThumbnailUrl(selectedGameModal)}
-                  alt={selectedGameModal.title}
-                  className="absolute inset-0 w-full h-full object-cover z-0"
+            <div className={`h-64 bg-slate-900 bg-gradient-to-br ${getGameThumbnailBgClass(selectedGameModal)} p-4 flex flex-col justify-between relative overflow-hidden`}>
+              {isPlayingTrailer && selectedGameModal.trailerUrl && isYouTube(selectedGameModal.trailerUrl) ? (
+                <iframe
+                  src={getYouTubeEmbedUrl(selectedGameModal.trailerUrl)}
+                  title="Trailer"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full z-0"
                 />
-              )}
-              <div className="flex items-center justify-between relative z-10">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {selectedGameModal.isAdminOnly && (
-                    <span className="text-[11px] font-black px-3 py-1 rounded-full bg-slate-800/80 backdrop-blur-md text-white border border-slate-600 flex items-center gap-1">
-                      <Lock className="w-3 h-3" />
-                      סודי
-                    </span>
+              ) : (
+                <>
+                  {getGameThumbnailUrl(selectedGameModal) && (
+                    <img
+                      src={getGameThumbnailUrl(selectedGameModal)}
+                      alt={selectedGameModal.title}
+                      className="absolute inset-0 w-full h-full object-cover z-0"
+                    />
                   )}
-                  {selectedGameModal.isNew && (
-                    <span className="text-[11px] font-black px-3 py-1 rounded-full bg-rose-600 text-white border-2 border-white shadow-lg">
-                      חדש!
-                    </span>
-                  )}
-                </div>
-              </div>
+                  <div className="flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {selectedGameModal.isAdminOnly && (
+                        <span className="text-[11px] font-black px-3 py-1 rounded-full bg-slate-800/80 backdrop-blur-md text-white border border-slate-600 flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          סודי
+                        </span>
+                      )}
+                      {selectedGameModal.isNew && (
+                        <span className="text-[11px] font-black px-3 py-1 rounded-full bg-rose-600 text-white border-2 border-white shadow-lg">
+                          חדש!
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-between text-[11px] text-white font-bold bg-[#2f4d21]/50 px-2.5 py-0.5 rounded-md backdrop-blur-sm relative z-10">
-                <span>{selectedGameModal.difficulty}</span>
-                <span>{selectedGameModal.ageRating}</span>
-              </div>
+                  <div className="flex items-center justify-between text-[11px] text-white font-bold bg-[#2f4d21]/50 px-2.5 py-0.5 rounded-md backdrop-blur-sm relative z-10">
+                    <span>{selectedGameModal.difficulty}</span>
+                    <span>{selectedGameModal.ageRating}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="p-5 space-y-4">
@@ -740,17 +754,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               {selectedGameModal.isComingSoon ? (
-                selectedGameModal.trailerUrl ? (
-                  <button
-                    onClick={() => {
-                      soundManager.playClick();
-                      window.open(selectedGameModal.trailerUrl, '_blank');
-                    }}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-black text-sm transition-all shadow-md hover:scale-105"
-                  >
-                    <Video className="w-4 h-4 fill-white" />
-                    <span>צפה בטריילר</span>
-                  </button>
+                selectedGameModal.trailerUrl && isYouTube(selectedGameModal.trailerUrl) ? (
+                  isPlayingTrailer ? (
+                    <div className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-200 text-slate-600 font-black text-sm">
+                      <Video className="w-4 h-4" />
+                      <span>הטריילר מתנגן...</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        soundManager.playClick();
+                        setIsPlayingTrailer(true);
+                      }}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-black text-sm transition-all shadow-md hover:scale-105"
+                    >
+                      <Video className="w-4 h-4 fill-white" />
+                      <span>צפה בטריילר</span>
+                    </button>
+                  )
                 ) : (
                   <div className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-200 text-slate-500 font-black text-sm cursor-not-allowed">
                     <Clock className="w-4 h-4" />
