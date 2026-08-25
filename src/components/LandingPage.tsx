@@ -249,18 +249,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             {/* Platform Stats */}
-            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-[#3e632c] max-w-md mx-auto lg:mx-0">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-6 border-t border-[#3e632c] max-w-lg mx-auto lg:mx-0">
               <div>
-                <div className="text-2xl font-black text-[#c99719]">6+</div>
-                <div className="text-xs text-emerald-200 font-semibold">משחקים חינמיים</div>
+                <div className="text-3xl sm:text-4xl font-black text-[#c99719]">6+</div>
+                <div className="text-sm sm:text-base text-emerald-200 font-bold mt-1">משחקים חינמיים</div>
               </div>
               <div>
-                <div className="text-2xl font-black text-[#c99719]">24/6</div>
-                <div className="text-xs text-emerald-200 font-semibold">זמינות מכל מכשיר</div>
+                <div className="text-3xl sm:text-4xl font-black text-[#c99719]">2+</div>
+                <div className="text-sm sm:text-base text-emerald-200 font-bold mt-1">משחקים חדשים כל חודש</div>
               </div>
               <div>
-                <div className="text-2xl font-black text-[#c99719]">100%</div>
-                <div className="text-xs text-emerald-200 font-semibold">תוכן מבוקר וערכי</div>
+                <div className="text-3xl sm:text-4xl font-black text-[#c99719]">100%</div>
+                <div className="text-sm sm:text-base text-emerald-200 font-bold mt-1">תוכן מבוקר וערכי</div>
               </div>
             </div>
           </div>
