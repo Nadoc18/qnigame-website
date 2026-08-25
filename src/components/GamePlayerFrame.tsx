@@ -49,6 +49,7 @@ interface GamePlayerFrameProps {
   user: UserProfile;
   onToggleFavorite: (gameId: string) => void;
   onRecordScore?: (gameId: string, pointsToAdd?: number, newHighScoreAttempt?: number) => void;
+  onUnlockAchievement?: (gameId: string, badgeId: string, value?: number) => void;
   onSaveGameProgress?: (gameId: string, progressData: any) => void;
   onSelectGame: (gameId: string) => void;
   allGames: Game[];
@@ -81,6 +82,7 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
   user,
   onToggleFavorite,
   onRecordScore,
+  onUnlockAchievement,
   onSaveGameProgress,
   onSelectGame,
   allGames,
@@ -330,6 +332,10 @@ export const GamePlayerFrame: React.FC<GamePlayerFrameProps> = ({
 
         if (onRecordScore && (pointsToAdd > 0 || highScore > 0)) {
           onRecordScore(targetGameId, pointsToAdd, highScore);
+        }
+      } else if (data.type === 'QNIGAME_ACHIEVEMENT') {
+        if (data.badgeId && onUnlockAchievement) {
+          onUnlockAchievement(targetGameId, data.badgeId, data.value);
         }
       } else if (data.type === 'QNIGAME_SAVE_PROGRESS') {
         const rawProgress = data.progressData !== undefined ? data.progressData : data.progress;

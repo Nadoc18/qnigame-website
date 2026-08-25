@@ -5,10 +5,11 @@ import { INITIAL_BADGES } from '../data/badgesData';
  * Event types that can trigger a badge progression
  */
 export interface BadgeEvent {
-  type: 'GAME_PLAYED' | 'HIGH_SCORE' | 'TRIVIA_STREAK' | 'SHABBAT_COMPLETED' | 'MENORAH_SOLVED' | 'WORDLE_WON';
+  type: 'GAME_PLAYED' | 'HIGH_SCORE' | 'TRIVIA_STREAK' | 'SHABBAT_COMPLETED' | 'MENORAH_SOLVED' | 'WORDLE_WON' | 'EXPLICIT_ACHIEVEMENT';
   gameId: string;
   gameTags?: string[]; // Added tags property for metadata-based rules
   value?: number; // Score, streak count, etc.
+  badgeId?: string; // Used for EXPLICIT_ACHIEVEMENT
 }
 
 /**
@@ -115,6 +116,12 @@ export const processBadgeEvent = (
   // 7. shabbat_lover: Play 3 games with the Shabbat tag
   if (event.type === 'GAME_PLAYED' && event.gameTags && (event.gameTags.includes('שבת') || event.gameTags.includes('שבת וחגים'))) {
     updateProgress('shabbat_lover', 1, true);
+  }
+
+  // 8. Explicit Achievement sent by the game
+  if (event.type === 'EXPLICIT_ACHIEVEMENT' && event.badgeId) {
+    // value can be used as incremental progress or directly completing it
+    updateProgress(event.badgeId, event.value !== undefined ? event.value : 1, event.value !== undefined);
   }
 
   return { updatedBadges: badges, newlyUnlocked };

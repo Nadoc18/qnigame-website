@@ -340,11 +340,8 @@ export default function App() {
         events.push({ type: 'HIGH_SCORE', gameId, value: newHighScoreAttempt, gameTags: gameInfo?.tags });
       }
 
-      // Temporary specific mappings based on gameId until Unity sends explicit events
-      if (gameId === 'trivia') events.push({ type: 'TRIVIA_STREAK', gameId, value: Math.floor(pointsToAdd) }); // Assume 1 streak = 10 pts
-      if (gameId === 'shabbat') events.push({ type: 'SHABBAT_COMPLETED', gameId });
-      if (gameId === 'menorah_puzzle') events.push({ type: 'MENORAH_SOLVED', gameId, value: 3 }); // Hard mode assumed
-      if (gameId === 'tanach_wordle') events.push({ type: 'WORDLE_WON', gameId });
+      // We removed the fake gameId-based achievement mappings here. 
+      // Games must now explicitly trigger achievements via the new QNIGAME_ACHIEVEMENT postMessage event.
 
       let currentBadges = prev.badges || [];
       let allNewlyUnlocked: any[] = [];
@@ -380,6 +377,30 @@ export default function App() {
             lastPlayed: 'עכשיו',
           },
         },
+      };
+
+      if (prev.isFirebaseUser) {
+        saveUserProfileToFirestore(nextUser);
+      }
+
+      return nextUser;
+    });
+  };
+
+  const handleUnlockAchievement = (gameId: string, badgeId: string, value?: number) => {
+    setUser((prev) => {
+      const event: BadgeEvent = { type: 'EXPLICIT_ACHIEVEMENT', gameId, badgeId, value };
+      const currentBadges = prev.badges || [];
+      const result = processBadgeEvent({ ...prev, badges: currentBadges }, event);
+      
+      if (result.newlyUnlocked.length > 0) {
+        setUnlockedBadge(result.newlyUnlocked[0]);
+        setTimeout(() => setUnlockedBadge(null), 4000);
+      }
+
+      const nextUser = {
+        ...prev,
+        badges: result.updatedBadges,
       };
 
       if (prev.isFirebaseUser) {
@@ -651,6 +672,7 @@ export default function App() {
             user={user}
             onToggleFavorite={handleToggleFavorite}
             onRecordScore={handleRecordScore}
+            onUnlockAchievement={handleUnlockAchievement}
             onSaveGameProgress={handleSaveGameProgress}
             onSelectGame={handleSelectGame}
             allGames={gamesList}
