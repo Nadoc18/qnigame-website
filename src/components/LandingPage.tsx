@@ -437,7 +437,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               >
                 {game.isComingSoon ? (
                   <div className="absolute top-4 right-4 z-20 bg-indigo-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white">
-                    {game.releaseDate ? `בקרוב: ${game.releaseDate}` : 'בקרוב!'}
+                    {game.releaseDate ? game.releaseDate : 'בקרוב!'}
                   </div>
                 ) : game.isNew ? (
                   <div className="absolute top-4 right-4 z-20 bg-rose-600 text-white text-sm font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white">
@@ -754,7 +754,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 ) : (
                   <div className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-200 text-slate-500 font-black text-sm cursor-not-allowed">
                     <Clock className="w-4 h-4" />
-                    <span>{selectedGameModal.releaseDate ? `בקרוב: ${selectedGameModal.releaseDate}` : 'בקרוב!'}</span>
+                    <span>{selectedGameModal.releaseDate ? selectedGameModal.releaseDate : 'בקרוב!'}</span>
                   </div>
                 )
               ) : (
