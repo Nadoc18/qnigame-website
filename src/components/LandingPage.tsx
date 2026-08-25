@@ -624,7 +624,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="bg-white border-2 border-emerald-100 rounded-3xl p-8 sm:p-12 space-y-8 shadow-lg">
           <div className="text-center max-w-2xl mx-auto">
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
-              למה לבחור בפורטל "קניגיים"?
+              למה לבחור ב"קניגיים"?
             </h2>
           </div>
 
