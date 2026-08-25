@@ -16,7 +16,7 @@ const getYouTubeId = (url: string) => {
 
 const getYouTubeEmbedUrl = (url: string) => {
   const id = getYouTubeId(url);
-  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : url;
+  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1` : url;
 };
 
 interface NewsPageProps {
@@ -249,6 +249,7 @@ export const NewsPage: React.FC<NewsPageProps> = ({ articles, selectedArticleId,
                     <video 
                       src={readingArticle.mediaUrl} 
                       controls 
+                      playsInline
                       className="w-full h-full"
                     />
                   ) : (

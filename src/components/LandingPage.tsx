@@ -31,7 +31,7 @@ const isYouTube = (url: string) => url && (url.includes('youtube.com') || url.in
 
 const getYouTubeEmbedUrl = (url: string) => {
   const id = getYouTubeId(url);
-  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : url;
+  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1&autoplay=1` : url;
 };
 
 const getYouTubeId = (url: string) => {
