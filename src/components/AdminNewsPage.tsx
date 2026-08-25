@@ -147,10 +147,18 @@ export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user, al
     setError(null);
     setIsSaving(true);
     try {
-      if (editingArticle.id) {
-        await updateNewsArticle(editingArticle.id, editingArticle);
+      const finalArticle = { ...editingArticle };
+      if ((finalArticle as any)._rawTags !== undefined) {
+        finalArticle.tags = (finalArticle as any)._rawTags.split(',').map((s: string) => s.trim().replace(/^#/, '')).filter((s: string) => s !== '');
+        delete (finalArticle as any)._rawTags;
+      } else if (!finalArticle.tags) {
+        finalArticle.tags = [];
+      }
+
+      if (finalArticle.id) {
+        await updateNewsArticle(finalArticle.id, finalArticle);
       } else {
-        await createNewsArticle(editingArticle);
+        await createNewsArticle(finalArticle);
       }
       setEditingArticle(null);
     } catch (err: any) {
@@ -387,6 +395,11 @@ export const AdminNewsPage: React.FC<AdminNewsPageProps> = ({ articles, user, al
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500">תוכן הכתבה (מלא)</label>
             <textarea value={editingArticle.content || ''} onChange={e => setEditingArticle({...editingArticle, content: e.target.value})} className="w-full p-2 border rounded-lg bg-slate-50 h-40" />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500">האשטאגים / תגיות (מופרדים בפסיק)</label>
+            <input type="text" value={(editingArticle as any)._rawTags !== undefined ? (editingArticle as any)._rawTags : (editingArticle.tags ? editingArticle.tags.join(', ') : '')} onChange={e => setEditingArticle({...editingArticle, _rawTags: e.target.value} as any)} className="w-full p-2 border rounded-lg bg-slate-50" placeholder="למידה, חדש, קניגיים" />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">
