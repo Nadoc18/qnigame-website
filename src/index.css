@@ -4,5 +4,15 @@
   --color-brand-green: #2fab65;
   --color-brand-dark: #2f4d21;
   --color-brand-gold: #c99719;
-  --font-sans: 'Rubik', system-ui, sans-serif;
+  --font-rubik: 'Rubik', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-rubik);
+  }
+  
+  h1, h2, h3, h4, h5, h6, .font-black, .font-extrabold {
+    font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  }
 }
