@@ -148,7 +148,7 @@ export const LogoShowcaseCard: React.FC<LogoShowcaseCardProps> = ({ news = [], o
             {/* Header Badge */}
             <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 text-xs sm:text-sm font-black text-white bg-[#2fab65] px-3.5 py-1.5 rounded-full shadow-md backdrop-blur-md">
               <Newspaper className="w-4 h-4" />
-              <span>חדשות חמות</span>
+              <span>חדשות חמות 🔥</span>
             </div>
             
             {/* Media Thumbnail */}

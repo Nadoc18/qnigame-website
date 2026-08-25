@@ -86,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => { setActiveTab('landing'); soundManager.playClick(); }}
             className="flex items-center gap-3 cursor-pointer group shrink-0"
           >
-             <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-black shrink-0 hidden lg:inline-block shadow-[0_0_10px_rgba(245,194,66,0.2)]">
+             <span className="text-sm sm:text-base px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-black shrink-0 hidden lg:inline-block shadow-[0_0_10px_rgba(245,194,66,0.2)]">
               בס״ד
             </span>
             <div className="flex items-center bg-white p-0.5 rounded-2xl shadow-md border-2 border-amber-200/80 transition-transform group-hover:scale-105 overflow-hidden">

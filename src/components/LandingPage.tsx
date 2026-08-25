@@ -215,7 +215,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             <div className="inline-flex items-center px-8 py-4 rounded-full bg-[#c99719]/20 border border-[#c99719]/50 text-[#f5d77f] text-3xl font-black shadow-inner">
-              <span>שחק. למד. התקדם.</span>
+              <span>שחק. למד. התפתח.</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
@@ -226,8 +226,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h1>
 
             <p className="text-emerald-100 text-base sm:text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium">
-              ספריית משחקי דפדפן אינטראקטיביים בתנ״ך, משנה, גמרא, הלכה, מוסר, חסידות ועוד.
-              שחק באופן מיידי, צבור נקודות ותגים, והתקדם בדרגות התורה והדעת!
+              באתר שלנו תוכלו למצוא משחקים חוויתיים המעודדים חשיבה ולמידה בתנ״ך, משנה, גמרא, הלכה, מוסר, חסידות ועוד.<br/>
+              הצטרפו אלינו למסע של חוויה ולמידה, שחקו, צברו נקודות ותהנו!
             </p>
 
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
@@ -360,7 +360,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <span>ספריית המשחקים</span>
               </h2>
               <p className="text-sm text-slate-600 mt-1 font-medium">
-                בחר משחק והחל לשחק מיד במסגרת המשחק האינטראקטיבית
+                בואו לצלול לתוך חוויה סוחפת ומהנה, שחקו, התחרו וגלו את אלופי התורה שבכם!
               </p>
             </div>
 
@@ -622,43 +622,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Values & Features Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white border-2 border-emerald-100 rounded-3xl p-8 sm:p-12 space-y-8 shadow-lg">
-          <div className="text-center max-w-2xl mx-auto space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
+          <div className="text-center max-w-2xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
               למה לבחור בפורטל "קניגיים"?
             </h2>
-            <p className="text-sm text-slate-600 font-medium">
-              ערכים, למידה חווייתית וסביבה בטוחה לכל משפחה שומרת תורה ומצוות
-            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-50/80 border border-slate-200 p-6 rounded-2xl space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-200 text-[#2f4d21] flex items-center justify-center shadow-inner">
-                <BookOpen className="w-6 h-6" />
+            <div className="bg-slate-50/80 border-2 border-emerald-100 p-6 rounded-2xl space-y-3 hover:border-emerald-300 transition-colors">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-100 border border-emerald-200 text-[#2f4d21] flex items-center justify-center shadow-inner">
+                <BookOpen className="w-7 h-7" />
               </div>
-              <h3 className="font-black text-slate-900 text-base">תוכן תורני איכותי</h3>
-              <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                כל המשחקים נבנים בקפידה עם מקורות מן התנ"ך, המשנה וההלכה, ומלווים בהסברים מחכימים.
+              <h3 className="font-black text-[#2f4d21] text-xl">תוכן תורני איכותי</h3>
+              <p className="text-sm text-slate-700 leading-relaxed font-semibold">
+                כל משחק שלנו בנוי עם דגש על למידה תורנית חוויתית. בכל משחק השחקן מקבל ערך תורני ויכול ללמוד דברים חדשים בתורה ובמצוות. כך שהשחקן לא רק מבלה בזמן מסך אלא יוצא עם ערך וידע נוסף שלא היה קודם.
               </p>
             </div>
 
-            <div className="bg-slate-50/80 border border-slate-200 p-6 rounded-2xl space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-200 text-[#2fab65] flex items-center justify-center shadow-inner">
-                <ShieldCheck className="w-6 h-6" />
+            <div className="bg-slate-50/80 border-2 border-teal-100 p-6 rounded-2xl space-y-3 hover:border-teal-300 transition-colors">
+              <div className="w-14 h-14 rounded-2xl bg-teal-100 border border-teal-200 text-teal-700 flex items-center justify-center shadow-inner">
+                <ShieldCheck className="w-7 h-7" />
               </div>
-              <h3 className="font-black text-slate-900 text-base">ללא פרסומות לא הולמות</h3>
-              <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                סביבת משחק נקייה, מוגנת ובטוחה לילדים ולנוער, המותאמת לערכי הבית היהודי.
+              <h3 className="font-black text-teal-800 text-xl">סביבת משחק מוגנת</h3>
+              <p className="text-sm text-slate-700 leading-relaxed font-semibold">
+                האתר שלנו מוגן ובטוח לשימוש עבור כל המשפחה. כל משחק נבנה בקפידה עם תוכן הולם לערכי הבית היהודי. האתר מציע תכנים תורניים בלבד - ללא פרסומות, ללא תוכן אלים או מגונה. בנוסף, אנו מקפידים על תשלום מאובטח ושמירה מלאה על פרטיות המשתמשים שלנו.
               </p>
             </div>
 
-            <div className="bg-slate-50/80 border border-slate-200 p-6 rounded-2xl space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 text-[#c99719] flex items-center justify-center shadow-inner">
-                <Award className="w-6 h-6" />
+            <div className="bg-slate-50/80 border-2 border-amber-100 p-6 rounded-2xl space-y-3 hover:border-amber-300 transition-colors">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-300 text-[#c99719] flex items-center justify-center shadow-inner">
+                <Award className="w-7 h-7" />
               </div>
-              <h3 className="font-black text-slate-900 text-base">חשבון אישי והישגים</h3>
-              <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                צבור נקודות, פתח תגים, שמור משחקים מועדפים והתקדם בדרגת התורה האישית שלך!
+              <h3 className="font-black text-amber-600 text-xl">חשבון אישי והישגים</h3>
+              <p className="text-sm text-slate-700 leading-relaxed font-semibold">
+                באתר שלנו מתחברים עם חשבון אישי, צוברים נקודות בכל משחק, לומדים, נהנים ומתקדמים בדרגת התורה האישית של כל אחד.
               </p>
             </div>
           </div>
